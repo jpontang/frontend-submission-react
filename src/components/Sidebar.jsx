@@ -1,8 +1,55 @@
-import { NavLink } from 'react-router-dom'
-import { X } from 'lucide-react'
+import { useState } from 'react'
+import { NavLink, useLocation } from 'react-router-dom'
+import { ChevronDown, X } from 'lucide-react'
 import clsx from 'clsx'
 import { getNavItemsForRole, ROLE_LABELS } from '../config/navigation'
 import { useAuth } from '../context/AuthContext'
+
+function NavGroup({ item, onNavigate }) {
+  const location = useLocation()
+  const hasActiveChild = item.children.some((child) => location.pathname.startsWith(child.to))
+  const [open, setOpen] = useState(hasActiveChild)
+  const Icon = item.icon
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setOpen((prev) => !prev)}
+        className={clsx(
+          'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+          hasActiveChild ? 'text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+        )}
+      >
+        <Icon size={18} />
+        <span className="flex-1 text-left">{item.label}</span>
+        <ChevronDown size={16} className={clsx('transition-transform', open && 'rotate-180')} />
+      </button>
+
+      {open && (
+        <div className="ml-4 mt-1 space-y-1 border-l border-slate-800 pl-4">
+          {item.children.map((child) => (
+            <NavLink
+              key={child.to}
+              to={child.to}
+              onClick={onNavigate}
+              className={({ isActive }) =>
+                clsx(
+                  'block rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                  isActive
+                    ? 'bg-indigo-600 text-white'
+                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                )
+              }
+            >
+              {child.label}
+            </NavLink>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 export default function Sidebar({ open, onClose }) {
   const { roleId } = useAuth()
@@ -19,7 +66,7 @@ export default function Sidebar({ open, onClose }) {
 
       <aside
         className={clsx(
-          'fixed inset-y-0 left-0 z-40 w-64 transform bg-slate-900 text-slate-100 transition-transform lg:static lg:translate-x-0',
+          'fixed inset-y-0 left-0 z-40 w-64 transform overflow-y-auto bg-slate-900 text-slate-100 transition-transform lg:static lg:translate-x-0',
           open ? 'translate-x-0' : '-translate-x-full'
         )}
       >
@@ -40,26 +87,30 @@ export default function Sidebar({ open, onClose }) {
           </div>
         )}
 
-        <nav className="mt-2 space-y-1 px-3">
-          {navItems.map(({ to, label, icon: Icon, end }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={end}
-              onClick={onClose}
-              className={({ isActive }) =>
-                clsx(
-                  'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
-                  isActive
-                    ? 'bg-indigo-600 text-white'
-                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                )
-              }
-            >
-              <Icon size={18} />
-              {label}
-            </NavLink>
-          ))}
+        <nav className="mt-2 space-y-1 px-3 pb-6">
+          {navItems.map((item) =>
+            item.children ? (
+              <NavGroup key={item.label} item={item} onNavigate={onClose} />
+            ) : (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.end}
+                onClick={onClose}
+                className={({ isActive }) =>
+                  clsx(
+                    'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+                    isActive
+                      ? 'bg-indigo-600 text-white'
+                      : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                  )
+                }
+              >
+                <item.icon size={18} />
+                {item.label}
+              </NavLink>
+            )
+          )}
         </nav>
       </aside>
     </>

@@ -7,6 +7,8 @@ import {
   ClipboardCheck,
   Truck,
   Receipt,
+  ShieldCheck,
+  Landmark,
 } from 'lucide-react'
 
 export const ROLES = {
@@ -60,6 +62,25 @@ export const NAV_ITEMS = [
     label: 'Users',
     icon: Users,
     roles: [ROLES.ADMIN],
+  },
+  {
+    to: '/roles',
+    label: 'Roles',
+    icon: ShieldCheck,
+    roles: [ROLES.ADMIN],
+  },
+  {
+    label: 'Yayasan',
+    icon: Landmark,
+    roles: [ROLES.ADMIN],
+    children: [
+      { to: '/yayasan/lembaga', label: 'Lembaga' },
+      { to: '/yayasan/jabatan', label: 'Jabatan' },
+      { to: '/yayasan/divisi', label: 'Divisi' },
+      { to: '/yayasan/pengurus', label: 'Pengurus' },
+      { to: '/yayasan/aset', label: 'Aset' },
+      { to: '/yayasan/dokumen', label: 'Dokumen' },
+    ],
   },
   { to: '/settings', label: 'Settings', icon: Settings },
 ]

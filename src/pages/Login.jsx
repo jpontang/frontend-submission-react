@@ -1,14 +1,17 @@
 import { useState } from 'react'
-import { Navigate, useNavigate } from 'react-router-dom'
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
 export default function Login() {
   const { login, user, error, loading } = useAuth()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
 
   if (user) return <Navigate to="/" replace />
+
+  const verified = searchParams.get('verified')
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -25,6 +28,17 @@ export default function Login() {
           </h1>
           <p className="mt-1 text-sm text-slate-500">Masuk untuk mengelola pengajuan.</p>
         </div>
+
+        {verified === '1' && (
+          <p className="mb-4 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+            Email berhasil diverifikasi. Silakan login.
+          </p>
+        )}
+        {verified === '0' && (
+          <p className="mb-4 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
+            Link verifikasi tidak valid atau sudah kedaluwarsa.
+          </p>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>

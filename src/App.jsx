@@ -7,11 +7,18 @@ import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Pengajuan from './pages/Pengajuan'
 import Users from './pages/Users'
+import Roles from './pages/Roles'
 import Settings from './pages/Settings'
 import BudgetControl from './pages/BudgetControl'
 import Penerimaan from './pages/Penerimaan'
 import QCReview from './pages/QCReview'
 import Suplayer from './pages/Suplayer'
+import Lembaga from './pages/yayasan/Lembaga'
+import Jabatan from './pages/yayasan/Jabatan'
+import Divisi from './pages/yayasan/Divisi'
+import Pengurus from './pages/yayasan/Pengurus'
+import Aset from './pages/yayasan/Aset'
+import Dokumen from './pages/yayasan/Dokumen'
 
 export default function App() {
   return (
@@ -35,6 +42,14 @@ export default function App() {
           element={
             <RoleRoute allow={[ROLES.ADMIN]}>
               <Users />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="roles"
+          element={
+            <RoleRoute allow={[ROLES.ADMIN]}>
+              <Roles />
             </RoleRoute>
           }
         />
@@ -67,6 +82,54 @@ export default function App() {
           element={
             <RoleRoute allow={[ROLES.ADMIN, ROLES.SUPLAYER]}>
               <Suplayer />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="yayasan/lembaga"
+          element={
+            <RoleRoute allow={[ROLES.ADMIN]}>
+              <Lembaga />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="yayasan/jabatan"
+          element={
+            <RoleRoute allow={[ROLES.ADMIN]}>
+              <Jabatan />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="yayasan/divisi"
+          element={
+            <RoleRoute allow={[ROLES.ADMIN]}>
+              <Divisi />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="yayasan/pengurus"
+          element={
+            <RoleRoute allow={[ROLES.ADMIN]}>
+              <Pengurus />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="yayasan/aset"
+          element={
+            <RoleRoute allow={[ROLES.ADMIN]}>
+              <Aset />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="yayasan/dokumen"
+          element={
+            <RoleRoute allow={[ROLES.ADMIN]}>
+              <Dokumen />
             </RoleRoute>
           }
         />
