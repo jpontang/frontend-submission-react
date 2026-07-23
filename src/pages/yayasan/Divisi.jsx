@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Pencil, Plus, Trash2 } from 'lucide-react'
+import { LayoutList, Network, Pencil, Plus, Trash2, Workflow } from 'lucide-react'
 import DataTable from '../../components/DataTable'
+import DivisiOrgChart from '../../components/DivisiOrgChart'
+import DivisiTree from '../../components/DivisiTree'
 import Modal from '../../components/Modal'
 import api from '../../lib/api'
 
@@ -21,6 +23,7 @@ export default function Divisi() {
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [view, setView] = useState('table')
 
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState(null)
@@ -119,6 +122,18 @@ export default function Divisi() {
     { key: 'kode_divisi', header: 'Kode' },
     { key: 'lembaga', header: 'Lembaga', render: (row) => row.lembaga?.nama_lembaga || '-' },
     { key: 'parent', header: 'Induk Divisi', render: (row) => row.parent?.nama_divisi || '-' },
+    {
+      key: 'kode_parent',
+      header: 'Kode Parent',
+      render: (row) =>
+        row.kode_parent ? (
+          <span className="rounded bg-indigo-50 px-1.5 py-0.5 text-xs font-medium text-indigo-700">
+            {row.kode_parent}
+          </span>
+        ) : (
+          '-'
+        ),
+    },
     { key: 'kepala', header: 'Kepala Divisi', render: (row) => row.kepala?.nama_lengkap || '-' },
     {
       key: 'status',
@@ -173,20 +188,69 @@ export default function Divisi() {
         </button>
       </div>
 
-      <input
-        type="text"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        placeholder="Cari nama divisi..."
-        className="w-full max-w-xs rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
-      />
+      <div className="flex items-center justify-between gap-4">
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Cari nama divisi..."
+          className="w-full max-w-xs rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+        />
+
+        <div className="flex shrink-0 rounded-lg border border-slate-200 p-1">
+          <button
+            type="button"
+            onClick={() => setView('table')}
+            className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium ${
+              view === 'table' ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            <LayoutList size={14} />
+            Tabel
+          </button>
+          <button
+            type="button"
+            onClick={() => setView('tree')}
+            className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium ${
+              view === 'tree' ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            <Network size={14} />
+            Tree
+          </button>
+          <button
+            type="button"
+            onClick={() => setView('chart')}
+            className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium ${
+              view === 'chart' ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            <Workflow size={14} />
+            Org Chart
+          </button>
+        </div>
+      </div>
 
       {error && <p className="text-sm text-rose-600">{error}</p>}
 
       {loading ? (
         <p className="text-sm text-slate-400">Memuat data...</p>
-      ) : (
+      ) : view === 'table' ? (
         <DataTable columns={columns} rows={filtered} emptyText="Belum ada divisi" />
+      ) : view === 'tree' ? (
+        <DivisiTree
+          items={filtered}
+          lembagaList={lembagaList}
+          onEdit={openEditModal}
+          onDelete={handleDelete}
+        />
+      ) : (
+        <DivisiOrgChart
+          items={filtered}
+          lembagaList={lembagaList}
+          onEdit={openEditModal}
+          onDelete={handleDelete}
+        />
       )}
 
       <Modal

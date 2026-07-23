@@ -4,11 +4,16 @@ import DataTable from '../components/DataTable'
 import Modal from '../components/Modal'
 import api from '../lib/api'
 
-const EMPTY_FORM = { name: '', email: '', password: '', role_id: '' }
+const EMPTY_FORM = { name: '', email: '', password: '', role_id: '', divisi_id: '' }
+
+// Role yang cakupan aksesnya ditentukan oleh divisi yayasan (tbl_divisi),
+// lihat migration add_divisi_yayasan_role_to_roles_table & UserController.
+const DIVISI_YAYASAN_ROLE_ID = 107
 
 export default function Users() {
   const [users, setUsers] = useState([])
   const [roles, setRoles] = useState([])
+  const [divisiList, setDivisiList] = useState([])
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -25,9 +30,14 @@ export default function Users() {
     setLoading(true)
     setError(null)
     try {
-      const [usersRes, rolesRes] = await Promise.all([api.get('/user'), api.get('/roles')])
+      const [usersRes, rolesRes, divisiRes] = await Promise.all([
+        api.get('/user'),
+        api.get('/roles'),
+        api.get('/yayasan/divisi'),
+      ])
       setUsers(usersRes.data)
       setRoles(rolesRes.data)
+      setDivisiList(divisiRes.data)
     } catch (err) {
       setError(err.response?.data?.msg || 'Gagal memuat data users.')
     } finally {
@@ -56,10 +66,18 @@ export default function Users() {
 
   function openEditModal(user) {
     setEditingUser(user)
-    setForm({ name: user.name, email: user.email, password: '', role_id: user.role_id ?? '' })
+    setForm({
+      name: user.name,
+      email: user.email,
+      password: '',
+      role_id: user.role_id ?? '',
+      divisi_id: user.role_id === DIVISI_YAYASAN_ROLE_ID ? user.id_subroles ?? '' : '',
+    })
     setFormError(null)
     setModalOpen(true)
   }
+
+  const isDivisiYayasanRole = Number(form.role_id) === DIVISI_YAYASAN_ROLE_ID
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -71,6 +89,7 @@ export default function Users() {
         email: form.email,
         role_id: form.role_id,
       }
+      if (isDivisiYayasanRole) payload.divisi_id = form.divisi_id || null
       if (form.password) payload.password = form.password
 
       if (editingUser) {
@@ -276,7 +295,9 @@ export default function Users() {
             <select
               required
               value={form.role_id}
-              onChange={(e) => setForm({ ...form, role_id: e.target.value })}
+              onChange={(e) =>
+                setForm({ ...form, role_id: e.target.value, divisi_id: '' })
+              }
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
             >
               <option value="" disabled>
@@ -289,6 +310,30 @@ export default function Users() {
               ))}
             </select>
           </div>
+
+          {isDivisiYayasanRole && (
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Divisi</label>
+              <select
+                required
+                value={form.divisi_id}
+                onChange={(e) => setForm({ ...form, divisi_id: e.target.value })}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+              >
+                <option value="" disabled>
+                  Pilih divisi
+                </option>
+                {divisiList.map((divisi) => (
+                  <option key={divisi.id} value={divisi.id}>
+                    {divisi.nama_divisi}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-slate-400">
+                Akses user ini akan dibatasi ke divisi ini beserta seluruh sub-divisinya.
+              </p>
+            </div>
+          )}
 
           {formError && <p className="text-sm text-rose-600">{formError}</p>}
         </form>

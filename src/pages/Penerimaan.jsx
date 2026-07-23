@@ -1,18 +1,99 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Receipt, Search } from 'lucide-react'
 import { useApp } from '../context/AppContext'
+import DataTable from '../components/DataTable'
+import SiswaSppTree from '../components/SiswaSppTree'
+import SppSiswaKelasModal from '../components/SppSiswaKelasModal'
+import { buildSiswaSppTree, buildUnitRows } from '../lib/siswaSppTree'
+
+function formatRupiah(value) {
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    maximumFractionDigits: 0,
+  }).format(value || 0)
+}
+
+const unitColumns = [
+  { key: 'nama_unit', header: 'Unit' },
+  { key: 'totalSiswa', header: 'Total Siswa Aktif' },
+  { key: 'jumlahKelas', header: 'Jumlah Kelas' },
+  {
+    key: 'totalSpp',
+    header: 'Total Tagihan SPP',
+    render: (row) => formatRupiah(row.totalSpp),
+  },
+]
 
 /**
  * Referensi jenis biaya (kategori penerimaan/SPP) untuk role Bendahara.
  * Data diambil dari database siak lewat GET /api/getJenisBiaya.
+ *
+ * Bagian bawah menggabungkan allSiswaAktif, allSiswaUnit, allSppFull,
+ * sppUnitAll, sppKelasAll (di-fetch bareng lewat AppContext) jadi satu
+ * tabel per-unit + tree Yayasan > Unit > Kelas. Klik node kelas membuka
+ * detail tagihan SPP aktif per siswa (POST /sppSiswaKelas).
  */
 export default function Penerimaan() {
-  const { jenisBiaya, loading, error, fetchJenisBiaya } = useApp()
+  const {
+    jenisBiaya,
+    siswaAktif,
+    siswaUnit,
+    sppFull,
+    sppUnitAll,
+    sppKelasAll,
+    loading,
+    error,
+    fetchJenisBiaya,
+    fetchAllSiswaAktif,
+    fetchAllSiswaUnit,
+    fetchAllSppFull,
+    fetchSppUnitAll,
+    fetchSppKelasAll,
+  } = useApp()
   const [search, setSearch] = useState('')
+  const [selectedKelas, setSelectedKelas] = useState(null)
 
   useEffect(() => {
     fetchJenisBiaya()
-  }, [fetchJenisBiaya])
+    fetchAllSiswaAktif()
+    fetchAllSiswaUnit()
+    fetchAllSppFull()
+    fetchSppUnitAll()
+    fetchSppKelasAll()
+  }, [
+    fetchJenisBiaya,
+    fetchAllSiswaAktif,
+    fetchAllSiswaUnit,
+    fetchAllSppFull,
+    fetchSppUnitAll,
+    fetchSppKelasAll,
+  ])
+
+  const unitRows = useMemo(
+    () =>
+      buildUnitRows({
+        siswaUnit: siswaUnit || [],
+        sppUnitAll: sppUnitAll || [],
+        sppKelasAll: sppKelasAll || [],
+      }),
+    [siswaUnit, sppUnitAll, sppKelasAll]
+  )
+
+  const siswaSppTree = useMemo(
+    () =>
+      buildSiswaSppTree({
+        siswaAktif,
+        siswaUnit: siswaUnit || [],
+        sppFull,
+        sppUnitAll: sppUnitAll || [],
+        sppKelasAll: sppKelasAll || [],
+      }),
+    [siswaAktif, siswaUnit, sppFull, sppUnitAll, sppKelasAll]
+  )
+
+  const rekapLoading =
+    loading.siswaAktif || loading.siswaUnit || loading.sppFull || loading.sppUnitAll || loading.sppKelasAll
 
   const rows = useMemo(() => {
     const list = jenisBiaya || []
@@ -22,69 +103,37 @@ export default function Penerimaan() {
   }, [jenisBiaya, search])
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6"> 
       <div>
-        <h1 className="text-xl font-semibold text-slate-900">Penerimaan</h1>
+        <h2 className="text-lg font-semibold text-slate-900">Rekap Siswa &amp; SPP per Unit</h2>
         <p className="text-sm text-slate-500">
-          Referensi jenis biaya yang digunakan untuk mengelompokkan penerimaan/pembayaran.
+          Gabungan siswa aktif, kelas, dan tagihan SPP dari seluruh unit
+          {rekapLoading && ' (memuat...)'}
         </p>
       </div>
 
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex w-full max-w-sm items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2">
-          <Search size={16} className="text-slate-400" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Cari jenis biaya..."
-            className="w-full bg-transparent text-sm text-slate-600 outline-none placeholder:text-slate-400"
-          />
-        </div>
-        <span className="whitespace-nowrap text-sm text-slate-500">
-          {loading.jenisBiaya ? 'Memuat...' : `${rows.length} jenis biaya`}
-        </span>
-      </div>
-
-      {error.jenisBiaya && (
+      {(error.siswaAktif || error.siswaUnit || error.sppFull || error.sppUnitAll || error.sppKelasAll) && (
         <p className="rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-600">
-          {error.jenisBiaya}
+          {error.siswaAktif || error.siswaUnit || error.sppFull || error.sppUnitAll || error.sppKelasAll}
         </p>
       )}
 
-      {loading.jenisBiaya ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div
-              key={i}
-              className="h-20 animate-pulse rounded-xl border border-slate-200 bg-slate-100"
-            />
-          ))}
-        </div>
-      ) : rows.length === 0 ? (
-        <p className="rounded-xl border border-slate-200 bg-white p-6 text-center text-sm text-slate-400">
-          Tidak ada jenis biaya ditemukan.
-        </p>
-      ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {rows.map((row) => (
-            <div
-              key={row.id}
-              className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
-            >
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
-                <Receipt size={18} />
-              </span>
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-slate-900">
-                  {row.nama_jenis_biaya}
-                </p>
-                <p className="text-xs text-slate-400">Kode: {row.id}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+      <DataTable
+        columns={unitColumns}
+        rows={unitRows}
+        emptyText={rekapLoading ? 'Memuat data...' : 'Belum ada data.'}
+      />
+
+      <div>
+        <p className="mb-2 text-xs text-slate-400">Klik nama kelas untuk lihat tagihan per siswa.</p>
+        <SiswaSppTree tree={siswaSppTree} onSelectKelas={setSelectedKelas} />
+      </div>
+
+      <SppSiswaKelasModal
+        open={Boolean(selectedKelas)}
+        onClose={() => setSelectedKelas(null)}
+        kelas={selectedKelas}
+      />
     </div>
   )
 }
