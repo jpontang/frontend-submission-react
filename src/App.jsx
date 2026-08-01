@@ -19,6 +19,11 @@ import Divisi from './pages/yayasan/Divisi'
 import Pengurus from './pages/yayasan/Pengurus'
 import Aset from './pages/yayasan/Aset'
 import Dokumen from './pages/yayasan/Dokumen'
+import KasTransaksi from './pages/yayasan/KasTransaksi'
+import PengajuanYayasan from './pages/yayasan/Pengajuan'
+import PotonganPendapatan from './pages/yayasan/PotonganPendapatan'
+import CronLog from './pages/yayasan/CronLog'
+import KasTransaksiYayasan from './pages/yayasan/KasTransaksiYayasan'
 
 export default function App() {
   return (
@@ -130,6 +135,46 @@ export default function App() {
           element={
             <RoleRoute allow={[ROLES.ADMIN]}>
               <Dokumen />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="yayasan/kas-transaksi"
+          element={
+            <RoleRoute allow={[ROLES.ADMIN, ROLES.BENDAHARA, ROLES.DIVISI_YAYASAN]}>
+              <KasTransaksi />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="yayasan/pengajuan"
+          element={
+            <RoleRoute allow={[ROLES.ADMIN, ROLES.BENDAHARA, ROLES.QC, ROLES.DIVISI_YAYASAN]}>
+              <PengajuanYayasan />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="yayasan/potongan-pendapatan"
+          element={
+            <RoleRoute allow={[ROLES.ADMIN, ROLES.BENDAHARA]}>
+              <PotonganPendapatan />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="yayasan/cron-log"
+          element={
+            <RoleRoute allow={[ROLES.ADMIN]}>
+              <CronLog />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="yayasan/kas-transaksi-yayasan"
+          element={
+            <RoleRoute allow={[ROLES.ADMIN]}>
+              <KasTransaksiYayasan />
             </RoleRoute>
           }
         />

@@ -1,7 +1,8 @@
-import { useState } from 'react'
-import { Outlet } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Outlet, useLocation } from 'react-router-dom'
 import Sidebar from '../components/Sidebar'
 import Topbar from '../components/Topbar'
+import { getPageTitle } from '../config/navigation'
 
 /**
  * Shell utama untuk semua role yang sudah login.
@@ -9,14 +10,19 @@ import Topbar from '../components/Topbar'
  */
 export default function UserLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const location = useLocation()
+
+  useEffect(() => {
+    document.title = `${getPageTitle(location.pathname)} - Admin Panel`
+  }, [location.pathname])
 
   return (
     <div className="flex min-h-screen bg-slate-100">
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      <div className="flex min-h-screen flex-1 flex-col">
+      <div className="flex min-h-screen min-w-0 flex-1 flex-col">
         <Topbar onMenuClick={() => setSidebarOpen(true)} />
-        <main className="flex-1 p-4 sm:p-6">
+        <main className="min-w-0 flex-1 p-4 sm:p-6">
           <Outlet />
         </main>
       </div>

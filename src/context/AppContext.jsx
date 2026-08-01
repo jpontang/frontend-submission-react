@@ -21,6 +21,16 @@ const RESOURCES = [
   { key: 'budgetDept', endpoint: '/budgetDept', fetchName: 'fetchBudgetDept' },
   { key: 'totalTagihanSPP', endpoint: '/getTotalTagihanSPP', fetchName: 'fetchTotalTagihanSPP' },
   { key: 'jenisBiaya', endpoint: '/getJenisBiaya', fetchName: 'fetchJenisBiaya', method: 'get' },
+  { key: 'potonganUnit', endpoint: '/potongPedapatan', fetchName: 'fetchPotonganUnit', method: 'get' },
+  {
+    key: 'potonganUnitBaru',
+    endpoint: '/yayasan/deduction-income/potongan-unit-sekolah',
+    fetchName: 'fetchPotonganUnitBaru',
+    method: 'get',
+  },
+  { key: 'deptList', endpoint: '/getDept', fetchName: 'fetchDeptList', method: 'get' },
+  { key: 'setBudgetUnit', endpoint: '/setBudget', fetchName: 'fetchSetBudgetUnit', method: 'get' },
+  { key: 'setBudgetDept', endpoint: '/getSetBudgetDept', fetchName: 'fetchSetBudgetDept', method: 'get' },
 ]
 
 function initialStateOf(value) {

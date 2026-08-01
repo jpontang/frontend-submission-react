@@ -9,6 +9,9 @@ import {
   Receipt,
   ShieldCheck,
   Landmark,
+  Banknote,
+  TrendingDown,
+  History,
 } from 'lucide-react'
 
 export const ROLES = {
@@ -18,6 +21,7 @@ export const ROLES = {
   QC: 104,
   SUPLAYER: 105,
   UNIT_DEPARTEMEN: 106,
+  DIVISI_YAYASAN: 107,
 }
 
 export const ROLE_LABELS = {
@@ -27,6 +31,7 @@ export const ROLE_LABELS = {
   [ROLES.QC]: 'QC',
   [ROLES.SUPLAYER]: 'Suplayer',
   [ROLES.UNIT_DEPARTEMEN]: 'Unit Departemen',
+  [ROLES.DIVISI_YAYASAN]: 'Divisi Yayasan',
 }
 
 // roles: undefined artinya menu tampil untuk semua role yang sudah login.
@@ -43,6 +48,24 @@ export const NAV_ITEMS = [
     to: '/penerimaan',
     label: 'Penerimaan',
     icon: Receipt,
+    roles: [ROLES.ADMIN, ROLES.BENDAHARA],
+  },
+  {
+    to: '/yayasan/pengajuan',
+    label: 'Pengajuan Yayasan',
+    icon: FileText,
+    roles: [ROLES.ADMIN, ROLES.BENDAHARA, ROLES.QC, ROLES.DIVISI_YAYASAN],
+  },
+  {
+    to: '/yayasan/kas-transaksi',
+    label: 'Kas Transaksi',
+    icon: Banknote,
+    roles: [ROLES.ADMIN, ROLES.BENDAHARA, ROLES.DIVISI_YAYASAN],
+  },
+  {
+    to: '/yayasan/potongan-pendapatan',
+    label: 'Potongan Pendapatan',
+    icon: TrendingDown,
     roles: [ROLES.ADMIN, ROLES.BENDAHARA],
   },
   {
@@ -80,11 +103,26 @@ export const NAV_ITEMS = [
       { to: '/yayasan/pengurus', label: 'Pengurus' },
       { to: '/yayasan/aset', label: 'Aset' },
       { to: '/yayasan/dokumen', label: 'Dokumen' },
+      { to: '/yayasan/kas-transaksi-yayasan', label: 'Kas Transaksi Yayasan' },
     ],
+  },
+  {
+    label: 'Log',
+    icon: History,
+    roles: [ROLES.ADMIN],
+    children: [{ to: '/yayasan/cron-log', label: 'Log Cron' }],
   },
   { to: '/settings', label: 'Settings', icon: Settings },
 ]
 
 export function getNavItemsForRole(roleId) {
   return NAV_ITEMS.filter((item) => !item.roles || item.roles.includes(Number(roleId)))
+}
+
+// Dipakai UserLayout utk set document.title otomatis sesuai menu yang lagi
+// dibuka, tanpa perlu tambah kode di tiap halaman satu-satu.
+export function getPageTitle(pathname) {
+  const flat = NAV_ITEMS.flatMap((item) => (item.children ? item.children : [item]))
+  const match = flat.find((item) => item.to === pathname)
+  return match?.label || 'Admin Panel'
 }

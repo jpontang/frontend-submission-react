@@ -1,11 +1,14 @@
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { ROLES } from '../config/navigation'
+import JenisDanaSection from '../components/JenisDanaSection'
 
 export default function Settings() {
-  const { user } = useAuth()
+  const { user, roleId } = useAuth()
   const [name, setName] = useState(user?.name || '')
   const [email, setEmail] = useState(user?.email || '')
   const [saved, setSaved] = useState(false)
+  const isAdmin = Number(roleId) === ROLES.ADMIN
 
   function handleSubmit(e) {
     e.preventDefault()
@@ -54,6 +57,8 @@ export default function Settings() {
           {saved && <span className="text-sm text-emerald-600">Tersimpan.</span>}
         </div>
       </form>
+
+      {isAdmin && <JenisDanaSection />}
     </div>
   )
 }
