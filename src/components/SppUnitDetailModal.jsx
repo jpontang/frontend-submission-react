@@ -10,7 +10,8 @@ function formatRupiah(value) {
 
 /**
  * Detail persentase SPP masuk per unit, dibuka dari tombol "Lihat Detail"
- * pada card "Total SPP Masuk" di BendaharaDashboard.
+ * pada card "Total SPP Masuk" di AdminDashboard (dipindah dari
+ * BendaharaDashboard).
  * rows = [{ unit, masuk, total, percentage }]
  */
 export default function SppUnitDetailModal({ open, onClose, periodLabel, rows }) {
@@ -19,6 +20,7 @@ export default function SppUnitDetailModal({ open, onClose, periodLabel, rows })
       open={open}
       onClose={onClose}
       title={`Persentase Spp Masuk Tiap Unit (${periodLabel})`}
+      size="lg"
       footer={
         <button
           type="button"

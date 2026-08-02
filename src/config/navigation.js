@@ -12,6 +12,8 @@ import {
   Banknote,
   TrendingDown,
   History,
+  CircleCheck,
+  HandCoins,
 } from 'lucide-react'
 
 export const ROLES = {
@@ -37,7 +39,6 @@ export const ROLE_LABELS = {
 // roles: undefined artinya menu tampil untuk semua role yang sudah login.
 export const NAV_ITEMS = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
-  { to: '/pengajuan', label: 'Pengajuan', icon: FileText },
   {
     to: '/budget-control',
     label: 'Budget Control',
@@ -52,8 +53,14 @@ export const NAV_ITEMS = [
   },
   {
     to: '/yayasan/pengajuan',
-    label: 'Pengajuan Yayasan',
+    label: 'Pengajuan',
     icon: FileText,
+    roles: [ROLES.ADMIN, ROLES.BENDAHARA, ROLES.QC, ROLES.DIVISI_YAYASAN],
+  },
+  {
+    to: '/yayasan/peminjaman',
+    label: 'Peminjaman',
+    icon: HandCoins,
     roles: [ROLES.ADMIN, ROLES.BENDAHARA, ROLES.QC, ROLES.DIVISI_YAYASAN],
   },
   {
@@ -73,6 +80,12 @@ export const NAV_ITEMS = [
     label: 'QC Review',
     icon: ClipboardCheck,
     roles: [ROLES.ADMIN, ROLES.QC],
+  },
+  {
+    to: '/bendahara-review',
+    label: 'Approval Bendahara',
+    icon: CircleCheck,
+    roles: [ROLES.ADMIN, ROLES.BENDAHARA],
   },
   {
     to: '/suplayer',

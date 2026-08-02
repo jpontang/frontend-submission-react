@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Wallet, TrendingDown, TrendingUp, Users } from 'lucide-react'
+import { Wallet, TrendingDown, TrendingUp, Users, Percent } from 'lucide-react'
 import StatCard from '../../../components/StatCard'
 import InfoStatCard from '../../../components/InfoStatCard'
 import RevenueChart from '../../../components/RevenueChart'
 import DataTable from '../../../components/DataTable'
 import StatusBadge from '../../../components/StatusBadge'
+import SppUnitDetailModal from '../../../components/SppUnitDetailModal'
 import { useApp } from '../../../context/AppContext'
-import SppUnitDetailModal from './SppUnitDetailModal'
 import SiswaUnitDetailModal from './SiswaUnitDetailModal'
 import SiswaKelasDetailModal from './SiswaKelasDetailModal'
 
@@ -32,14 +32,6 @@ const columns = [
   { key: 'status', header: 'Status', render: (row) => <StatusBadge status={row.status} /> },
 ]
 
-function formatRupiah(value) {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    maximumFractionDigits: 0,
-  }).format(value || 0)
-}
-
 /**
  * Dashboard Bendahara: ringkasan kondisi budget lintas unit.
  */
@@ -64,9 +56,9 @@ export default function BendaharaDashboard() {
     fetchSppUnitAll,
   } = useApp()
 
-  const [showSppDetail, setShowSppDetail] = useState(false)
   const [showSiswaUnitDetail, setShowSiswaUnitDetail] = useState(false)
   const [selectedUnit, setSelectedUnit] = useState(null)
+  const [showSppDetail, setShowSppDetail] = useState(false)
 
   useEffect(() => {
     fetchAllSiswaAktif()
@@ -134,10 +126,10 @@ export default function BendaharaDashboard() {
           onDetailClick={() => setShowSiswaUnitDetail(true)}
         />
         <InfoStatCard
-          title="Total SPP Masuk"
+          title="Persentase SPP Masuk"
           period={periodeAktif}
-          value={loading.sppMasuk ? '...' : formatRupiah(sppMasuk)}
-          percentage={persenSppMasuk}
+          value={loading.sppMasuk || loading.sppFull ? '...' : `${persenSppMasuk}%`}
+          icon={Percent}
           onDetailClick={() => setShowSppDetail(true)}
         />
       </div>
@@ -147,13 +139,6 @@ export default function BendaharaDashboard() {
       <div>
         <DataTable title="Budget per Unit" columns={columns} rows={BUDGET} />
       </div>
-
-      <SppUnitDetailModal
-        open={showSppDetail}
-        onClose={() => setShowSppDetail(false)}
-        periodLabel={bulanIni}
-        rows={sppDetailRows}
-      />
 
       <SiswaUnitDetailModal
         open={showSiswaUnitDetail && !selectedUnit}
@@ -172,6 +157,13 @@ export default function BendaharaDashboard() {
         onBack={() => setSelectedUnit(null)}
         unitName={selectedUnit?.nama_unit}
         rows={siswaKelasRows}
+      />
+
+      <SppUnitDetailModal
+        open={showSppDetail}
+        onClose={() => setShowSppDetail(false)}
+        periodLabel={bulanIni}
+        rows={sppDetailRows}
       />
     </div>
   )

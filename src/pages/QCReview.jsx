@@ -1,30 +1,128 @@
+import { useCallback, useEffect, useState } from 'react'
 import DataTable from '../components/DataTable'
-import StatusBadge from '../components/StatusBadge'
+import StatCard from '../components/StatCard'
+import PengajuanStatusBadge from '../components/PengajuanStatusBadge'
+import PengajuanDetailModal from '../components/PengajuanDetailModal'
+import { useAuth } from '../context/AuthContext'
+import api from '../lib/api'
 
-const ITEMS = [
-  { id: 1, barang: 'Kertas A4', suplayer: 'CV Sumber Jaya', qty: 50, status: 'pending' },
-  { id: 2, barang: 'Tinta Printer', suplayer: 'Toko Abadi', qty: 12, status: 'active' },
-  { id: 3, barang: 'Spidol Whiteboard', suplayer: 'CV Sumber Jaya', qty: 30, status: 'rejected' },
-]
+function formatRupiah(value) {
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    maximumFractionDigits: 0,
+  }).format(value || 0)
+}
 
-const columns = [
-  { key: 'barang', header: 'Barang' },
-  { key: 'suplayer', header: 'Suplayer' },
-  { key: 'qty', header: 'Qty' },
-  { key: 'status', header: 'Status QC', render: (row) => <StatusBadge status={row.status} /> },
-]
+function formatTanggal(value) {
+  return value ? new Date(value).toLocaleDateString('id-ID') : '-'
+}
 
+/**
+ * Antrian pengajuan Yayasan yang BELUM direview QC - status=disetujui_divisi
+ * (sudah lolos tahap 1/divisi, menunggu tahap 2/QC sebelum lanjut ke
+ * Bendahara). Difilter langsung di backend (GET /yayasan/pengajuan?status=
+ * disetujui_divisi), bukan dummy data lagi. Aksi ACC/Minta Revisi/Tolak
+ * dipakai dari PengajuanDetailModal yang sama dgn menu Pengajuan Yayasan,
+ * supaya tidak duplikasi logic approve-qc/revise-qc.
+ */
 export default function QCReview() {
+  const { roleId } = useAuth()
+  const [rows, setRows] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [selected, setSelected] = useState(null)
+  const [detailError, setDetailError] = useState(null)
+
+  const loadData = useCallback(() => {
+    setLoading(true)
+    setError(null)
+    api
+      .get('/yayasan/pengajuan', { params: { status: 'disetujui_divisi' } })
+      .then(({ data }) => setRows(data))
+      .catch((err) => setError(err.response?.data?.msg || 'Gagal memuat data pengajuan.'))
+      .finally(() => setLoading(false))
+  }, [])
+
+  useEffect(() => {
+    loadData()
+  }, [loadData])
+
+  function openDetail(row) {
+    setDetailError(null)
+    api
+      .get(`/yayasan/pengajuan/${row.id}`)
+      .then(({ data }) => setSelected(data))
+      .catch((err) => setDetailError(err.response?.data?.msg || 'Gagal memuat detail pengajuan.'))
+  }
+
+  const columns = [
+    { key: 'kode_pengajuan', header: 'Kode' },
+    { key: 'divisi', header: 'Divisi', render: (row) => row.divisi?.nama_divisi || '-' },
+    {
+      key: 'jenis_pengajuan',
+      header: 'Jenis',
+      render: (row) => (row.jenis_pengajuan === 'barang' ? 'Pengadaan Barang' : 'Pengajuan Dana'),
+    },
+    { key: 'nama_kegiatan', header: 'Kegiatan', render: (row) => row.nama_kegiatan || '-' },
+    {
+      key: 'total_nilai_pengajuan',
+      header: 'Nilai',
+      render: (row) => formatRupiah(row.total_nilai_pengajuan),
+    },
+    {
+      key: 'tanggal_disetujui_divisi',
+      header: 'Disetujui Divisi',
+      render: (row) => formatTanggal(row.tanggal_disetujui_divisi),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (row) => <PengajuanStatusBadge status={row.status} />,
+    },
+    {
+      key: 'actions',
+      header: 'Aksi',
+      render: (row) => (
+        <button
+          onClick={() => openDetail(row)}
+          className="rounded-lg bg-indigo-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-indigo-500"
+        >
+          Review
+        </button>
+      ),
+    },
+  ]
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold text-slate-900">QC Review</h1>
-          <p className="text-sm text-slate-500">Khusus QC &amp; Admin — review kualitas barang dari pengajuan.</p>
+          <p className="text-sm text-slate-500">
+            Pengajuan yang sudah disetujui divisi &amp; menunggu direview QC.
+          </p>
         </div>
       </div>
 
-      <DataTable columns={columns} rows={ITEMS} />
+      <StatCard label="Menunggu Review QC" value={rows.length} accent="amber" />
+
+      {error && <p className="rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-600">{error}</p>}
+      {detailError && <p className="rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-600">{detailError}</p>}
+
+      <DataTable
+        columns={columns}
+        rows={rows}
+        emptyText={loading ? 'Memuat data...' : 'Tidak ada pengajuan yang menunggu review QC.'}
+      />
+
+      <PengajuanDetailModal
+        open={Boolean(selected)}
+        onClose={() => setSelected(null)}
+        pengajuan={selected}
+        roleId={roleId}
+        onActionDone={loadData}
+      />
     </div>
   )
 }

@@ -5,13 +5,13 @@ import RoleRoute from './components/RoleRoute'
 import { ROLES } from './config/navigation'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
-import Pengajuan from './pages/Pengajuan'
 import Users from './pages/Users'
 import Roles from './pages/Roles'
 import Settings from './pages/Settings'
 import BudgetControl from './pages/BudgetControl'
 import Penerimaan from './pages/Penerimaan'
 import QCReview from './pages/QCReview'
+import BendaharaReview from './pages/BendaharaReview'
 import Suplayer from './pages/Suplayer'
 import Lembaga from './pages/yayasan/Lembaga'
 import Jabatan from './pages/yayasan/Jabatan'
@@ -21,6 +21,7 @@ import Aset from './pages/yayasan/Aset'
 import Dokumen from './pages/yayasan/Dokumen'
 import KasTransaksi from './pages/yayasan/KasTransaksi'
 import PengajuanYayasan from './pages/yayasan/Pengajuan'
+import Peminjaman from './pages/yayasan/Peminjaman'
 import PotonganPendapatan from './pages/yayasan/PotonganPendapatan'
 import CronLog from './pages/yayasan/CronLog'
 import KasTransaksiYayasan from './pages/yayasan/KasTransaksiYayasan'
@@ -39,7 +40,6 @@ export default function App() {
         }
       >
         <Route index element={<Dashboard />} />
-        <Route path="pengajuan" element={<Pengajuan />} />
         <Route path="settings" element={<Settings />} />
 
         <Route
@@ -79,6 +79,14 @@ export default function App() {
           element={
             <RoleRoute allow={[ROLES.ADMIN, ROLES.QC]}>
               <QCReview />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="bendahara-review"
+          element={
+            <RoleRoute allow={[ROLES.ADMIN, ROLES.BENDAHARA]}>
+              <BendaharaReview />
             </RoleRoute>
           }
         />
@@ -151,6 +159,14 @@ export default function App() {
           element={
             <RoleRoute allow={[ROLES.ADMIN, ROLES.BENDAHARA, ROLES.QC, ROLES.DIVISI_YAYASAN]}>
               <PengajuanYayasan />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="yayasan/peminjaman"
+          element={
+            <RoleRoute allow={[ROLES.ADMIN, ROLES.BENDAHARA, ROLES.QC, ROLES.DIVISI_YAYASAN]}>
+              <Peminjaman />
             </RoleRoute>
           }
         />

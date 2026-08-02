@@ -5,6 +5,7 @@ import BendaharaDashboard from './dashboards/BendaharaDashboard'
 import QCDashboard from './dashboards/QCDashboard'
 import UnitDashboard from './dashboards/UnitDashboard'
 import SuplayerDashboard from './dashboards/SuplayerDashboard'
+import DivisiYayasanDashboard from './dashboards/DivisiYayasanDashboard'
 
 const DASHBOARD_BY_ROLE = {
   [ROLES.ADMIN]: AdminDashboard,
@@ -13,6 +14,7 @@ const DASHBOARD_BY_ROLE = {
   [ROLES.UNIT_SEKOLAH]: UnitDashboard,
   [ROLES.UNIT_DEPARTEMEN]: UnitDashboard,
   [ROLES.SUPLAYER]: SuplayerDashboard,
+  [ROLES.DIVISI_YAYASAN]: DivisiYayasanDashboard,
 }
 
 /**

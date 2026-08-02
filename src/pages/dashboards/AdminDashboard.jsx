@@ -1,82 +1,245 @@
-import { FileText, Users, Wallet, CircleCheck } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { FileText, Wallet, Clock, CircleX } from 'lucide-react'
+import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import StatCard from '../../components/StatCard'
+import InfoStatCard from '../../components/InfoStatCard'
 import RevenueChart from '../../components/RevenueChart'
 import DataTable from '../../components/DataTable'
-import StatusBadge from '../../components/StatusBadge'
+import PengajuanStatusBadge from '../../components/PengajuanStatusBadge'
+import SppUnitDetailModal from '../../components/SppUnitDetailModal'
+import { useApp } from '../../context/AppContext'
+import api from '../../lib/api'
 
-const CHART_DATA = [
-  { label: 'Jan', value: 24 },
-  { label: 'Feb', value: 31 },
-  { label: 'Mar', value: 28 },
-  { label: 'Apr', value: 40 },
-  { label: 'Mei', value: 35 },
-  { label: 'Jun', value: 48 },
-  { label: 'Jul', value: 42 },
-]
+function formatRupiah(value) {
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    notation: 'compact',
+    maximumFractionDigits: 1,
+  }).format(value || 0)
+}
 
-const RECENT_PENGAJUAN = [
-  { id: 1, kode: 'PJ-0231', unit: 'QC', total: 'Rp 4.200.000', status: 'pending' },
-  { id: 2, kode: 'PJ-0230', unit: 'Finance', total: 'Rp 1.850.000', status: 'active' },
-  { id: 3, kode: 'PJ-0229', unit: 'Gudang', total: 'Rp 9.100.000', status: 'rejected' },
-  { id: 4, kode: 'PJ-0228', unit: 'Bendahara', total: 'Rp 2.400.000', status: 'active' },
-]
+const STATUS_ORDER = ['diajukan', 'disetujui_divisi', 'revisi_qc', 'disetujui_qc', 'disetujui_bendahara', 'ditolak']
 
-const columns = [
-  { key: 'kode', header: 'Kode' },
-  { key: 'unit', header: 'Unit' },
-  { key: 'total', header: 'Total' },
-  {
-    key: 'status',
-    header: 'Status',
-    render: (row) => <StatusBadge status={row.status} />,
-  },
-]
+const STATUS_LABELS = {
+  diajukan: 'Diajukan',
+  disetujui_divisi: 'Disetujui Divisi',
+  revisi_qc: 'Revisi QC',
+  disetujui_qc: 'Disetujui QC',
+  disetujui_bendahara: 'Selesai',
+  ditolak: 'Ditolak',
+}
+
+// Warna disamakan dgn PengajuanStatusBadge (amber/blue/orange/cyan/emerald/rose).
+const STATUS_COLORS = {
+  diajukan: '#f59e0b',
+  disetujui_divisi: '#3b82f6',
+  revisi_qc: '#f97316',
+  disetujui_qc: '#06b6d4',
+  disetujui_bendahara: '#10b981',
+  ditolak: '#f43f5e',
+}
+
+const PENDING_STATUSES = ['diajukan', 'disetujui_divisi', 'disetujui_qc', 'revisi_qc']
+
+const BULAN_LABEL = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des']
 
 /**
- * Dashboard Admin: overview global lintas unit/role.
+ * Dashboard Admin - ringkasan & grafik kegiatan Pengajuan Yayasan (real
+ * data dari GET /yayasan/pengajuan, admin lihat lintas semua divisi lewat
+ * DivisiScopeMiddleware). Sebelumnya seluruh halaman ini dummy/hardcode.
  */
 export default function AdminDashboard() {
+  const [rows, setRows] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  const {
+    periode,
+    sppMasuk,
+    sppFull,
+    sppUnitMasuk,
+    sppUnitAll,
+    loading: sppLoading,
+    fetchPeriode,
+    fetchAllSppMasuk,
+    fetchAllSppFull,
+    fetchSppUnitMasuk,
+    fetchSppUnitAll,
+  } = useApp()
+  const [showSppDetail, setShowSppDetail] = useState(false)
+
+  useEffect(() => {
+    setLoading(true)
+    setError(null)
+    api
+      .get('/yayasan/pengajuan')
+      .then(({ data }) => setRows(data))
+      .catch((err) => setError(err.response?.data?.msg || 'Gagal memuat data pengajuan.'))
+      .finally(() => setLoading(false))
+  }, [])
+
+  useEffect(() => {
+    fetchPeriode()
+    fetchAllSppMasuk()
+    fetchAllSppFull()
+    fetchSppUnitMasuk()
+    fetchSppUnitAll()
+  }, [fetchPeriode, fetchAllSppMasuk, fetchAllSppFull, fetchSppUnitMasuk, fetchSppUnitAll])
+
+  const periodeAktif = periode?.[0]?.nama_periode || '2026/2027'
+  const bulanIni = useMemo(
+    () => new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+    []
+  )
+  const persenSppMasuk = sppFull ? Number(((sppMasuk / sppFull) * 100).toFixed(2)) : 0
+
+  const sppDetailRows = useMemo(() => {
+    return (sppUnitAll || []).map((unit) => {
+      const masukUnit = (sppUnitMasuk || []).find((u) => u.nama_unit === unit.nama_unit)
+      const masuk = Number(masukUnit?.total || 0)
+      const total = Number(unit.total || 0)
+      const percentage = total > 0 ? Number(((masuk / total) * 100).toFixed(2)) : 0
+      return { unit: unit.nama_unit, masuk, total, percentage }
+    })
+  }, [sppUnitAll, sppUnitMasuk])
+
+  const stats = useMemo(() => {
+    const totalNilaiSelesai = rows
+      .filter((r) => r.status === 'disetujui_bendahara')
+      .reduce((sum, r) => sum + (Number(r.total_nilai_pengajuan) || 0), 0)
+
+    return {
+      total: rows.length,
+      totalNilaiSelesai,
+      menungguProses: rows.filter((r) => PENDING_STATUSES.includes(r.status)).length,
+      ditolak: rows.filter((r) => r.status === 'ditolak').length,
+    }
+  }, [rows])
+
+  // 6 bulan terakhir (termasuk bulan berjalan), dihitung dari created_at.
+  const chartData = useMemo(() => {
+    const now = new Date()
+    const bulanBuckets = Array.from({ length: 6 }, (_, i) => {
+      const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1)
+      return { key: `${d.getFullYear()}-${d.getMonth()}`, label: BULAN_LABEL[d.getMonth()], value: 0 }
+    })
+
+    rows.forEach((row) => {
+      if (!row.created_at) return
+      const d = new Date(row.created_at)
+      const key = `${d.getFullYear()}-${d.getMonth()}`
+      const bucket = bulanBuckets.find((b) => b.key === key)
+      if (bucket) bucket.value += 1
+    })
+
+    return bulanBuckets.map(({ label, value }) => ({ label, value }))
+  }, [rows])
+
+  const statusPieData = useMemo(() => {
+    return STATUS_ORDER.map((status) => ({
+      status,
+      name: STATUS_LABELS[status],
+      value: rows.filter((r) => r.status === status).length,
+      color: STATUS_COLORS[status],
+    })).filter((d) => d.value > 0)
+  }, [rows])
+
+  const recent = rows.slice(0, 8)
+
+  const columns = [
+    { key: 'kode_pengajuan', header: 'Kode' },
+    { key: 'divisi', header: 'Divisi', render: (row) => row.divisi?.nama_divisi || '-' },
+    {
+      key: 'jenis_pengajuan',
+      header: 'Jenis',
+      render: (row) => (row.jenis_pengajuan === 'barang' ? 'Pengadaan Barang' : 'Pengajuan Dana'),
+    },
+    {
+      key: 'total_nilai_pengajuan',
+      header: 'Nilai',
+      render: (row) => formatRupiah(row.total_nilai_pengajuan),
+    },
+    { key: 'status', header: 'Status', render: (row) => <PengajuanStatusBadge status={row.status} /> },
+  ]
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-xl font-semibold text-slate-900">Dashboard</h1>
-        <p className="text-sm text-slate-500">Ringkasan aktivitas seluruh sistem hari ini.</p>
+        <p className="text-sm text-slate-500">Ringkasan &amp; grafik kegiatan Pengajuan Yayasan.</p>
       </div>
 
+      {error && <p className="rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-600">{error}</p>}
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Total Pengajuan" value="1.284" icon={FileText} trend={8.2} accent="indigo" />
-        <StatCard label="Total Users" value="56" icon={Users} trend={2.4} accent="emerald" />
-        <StatCard label="Total Budget" value="Rp 120jt" icon={Wallet} trend={-3.1} accent="amber" />
-        <StatCard label="Disetujui" value="932" icon={CircleCheck} trend={5.6} accent="rose" />
+        <StatCard label="Total Pengajuan" value={stats.total} icon={FileText} accent="indigo" />
+        <StatCard
+          label="Total Nilai Selesai"
+          value={formatRupiah(stats.totalNilaiSelesai)}
+          icon={Wallet}
+          accent="emerald"
+        />
+        <StatCard label="Menunggu Proses" value={stats.menungguProses} icon={Clock} accent="amber" />
+        <StatCard label="Ditolak" value={stats.ditolak} icon={CircleX} accent="rose" />
+      </div>
+
+      <div className="max-w-sm">
+        <InfoStatCard
+          title="Total SPP Masuk"
+          period={periodeAktif}
+          value={sppLoading.sppMasuk ? '...' : formatRupiah(sppMasuk)}
+          percentage={persenSppMasuk}
+          onDetailClick={() => setShowSppDetail(true)}
+        />
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <RevenueChart data={CHART_DATA} />
+          <RevenueChart data={chartData} title="Pengajuan per Bulan" />
         </div>
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <h3 className="mb-4 text-sm font-semibold text-slate-700">Status Pengajuan</h3>
-          <ul className="space-y-3 text-sm">
-            <li className="flex items-center justify-between">
-              <span className="text-slate-500">Disetujui</span>
-              <span className="font-semibold text-emerald-600">72%</span>
-            </li>
-            <li className="flex items-center justify-between">
-              <span className="text-slate-500">Pending</span>
-              <span className="font-semibold text-amber-600">21%</span>
-            </li>
-            <li className="flex items-center justify-between">
-              <span className="text-slate-500">Ditolak</span>
-              <span className="font-semibold text-rose-600">7%</span>
-            </li>
-          </ul>
+          {statusPieData.length === 0 ? (
+            <p className="py-8 text-center text-sm text-slate-400">
+              {loading ? 'Memuat data...' : 'Belum ada pengajuan.'}
+            </p>
+          ) : (
+            <ResponsiveContainer width="100%" height={220}>
+              <PieChart>
+                <Pie data={statusPieData} dataKey="value" nameKey="name" innerRadius={50} outerRadius={80}>
+                  {statusPieData.map((entry) => (
+                    <Cell key={entry.status} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip contentStyle={{ borderRadius: 8, borderColor: '#e2e8f0', fontSize: 12 }} />
+                <Legend
+                  layout="vertical"
+                  align="right"
+                  verticalAlign="middle"
+                  wrapperStyle={{ fontSize: 12 }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          )}
         </div>
       </div>
 
       <div>
         <h3 className="mb-3 text-sm font-semibold text-slate-700">Pengajuan Terbaru</h3>
-        <DataTable columns={columns} rows={RECENT_PENGAJUAN} />
+        <DataTable
+          columns={columns}
+          rows={recent}
+          emptyText={loading ? 'Memuat data...' : 'Belum ada pengajuan.'}
+        />
       </div>
+
+      <SppUnitDetailModal
+        open={showSppDetail}
+        onClose={() => setShowSppDetail(false)}
+        periodLabel={bulanIni}
+        rows={sppDetailRows}
+      />
     </div>
   )
 }
