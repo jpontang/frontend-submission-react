@@ -115,6 +115,7 @@ export default function PengajuanYayasan() {
   const counts = useMemo(() => {
     const base = {
       diajukan: 0,
+      revisi_divisi: 0,
       disetujui_divisi: 0,
       revisi_qc: 0,
       disetujui_qc: 0,
@@ -134,7 +135,7 @@ export default function PengajuanYayasan() {
       ? counts.disetujui_divisi
       : numericRoleId === ROLES.BENDAHARA
         ? counts.disetujui_qc
-        : counts.diajukan + counts.revisi_qc
+        : counts.diajukan + counts.revisi_divisi + counts.revisi_qc
 
   const columns = [
     { key: 'kode_pengajuan', header: 'Kode' },
@@ -191,9 +192,10 @@ export default function PengajuanYayasan() {
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-7">
         <StatCard label="Perlu Tindakan Saya" value={myQueueCount} accent="amber" />
         <StatCard label="Diajukan" value={counts.diajukan} />
+        <StatCard label="Revisi Divisi" value={counts.revisi_divisi} accent="amber" />
         <StatCard label="Revisi QC" value={counts.revisi_qc} accent="amber" />
         <StatCard label="Disetujui QC" value={counts.disetujui_qc} accent="indigo" />
         <StatCard label="Selesai" value={counts.disetujui_bendahara} accent="emerald" />
@@ -208,6 +210,7 @@ export default function PengajuanYayasan() {
         >
           <option value="">Semua Status</option>
           <option value="diajukan">Diajukan</option>
+          <option value="revisi_divisi">Revisi (Divisi)</option>
           <option value="disetujui_divisi">Disetujui Divisi</option>
           <option value="revisi_qc">Revisi (QC)</option>
           <option value="disetujui_qc">Disetujui QC</option>

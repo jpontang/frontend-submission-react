@@ -3,6 +3,22 @@ import Modal from './Modal'
 import DetilPengajuanEditor, { EMPTY_ITEM } from './DetilPengajuanEditor'
 import api from '../lib/api'
 
+/** Tulis objek/array bersarang ke FormData pakai notasi bracket
+ *  ('detil[0][uraian]') supaya Laravel tetap membacanya sebagai array. */
+function appendToFormData(formData, data, parentKey = '') {
+  Object.entries(data).forEach(([key, value]) => {
+    const formKey = parentKey ? `${parentKey}[${key}]` : key
+    if (value === null || value === undefined) return
+    if (Array.isArray(value) || (typeof value === 'object' && !(value instanceof File))) {
+      appendToFormData(formData, value, formKey)
+    } else {
+      formData.append(formKey, value)
+    }
+  })
+}
+
+const MAX_FILE_PROPOSAL_MB = 5
+
 const EMPTY_FORM = {
   divisi_id: '',
   jenis_pengajuan: 'dana',
@@ -32,6 +48,7 @@ export default function PengajuanFormModal({ open, onClose, onSaved }) {
   const [sumberDanaList, setSumberDanaList] = useState([])
   const [form, setForm] = useState(EMPTY_FORM)
   const [items, setItems] = useState([{ ...EMPTY_ITEM }])
+  const [fileProposal, setFileProposal] = useState(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
 
@@ -39,6 +56,7 @@ export default function PengajuanFormModal({ open, onClose, onSaved }) {
     if (!open) return
     setForm(EMPTY_FORM)
     setItems([{ ...EMPTY_ITEM }])
+    setFileProposal(null)
     setError(null)
     api
       .get('/yayasan/divisi')
@@ -62,7 +80,7 @@ export default function PengajuanFormModal({ open, onClose, onSaved }) {
     setSaving(true)
     setError(null)
     try {
-      await api.post('/yayasan/pengajuan', {
+      const payload = {
         ...form,
         nama_sumber_dana: selectedSumberDana?.name || null,
         detil: items.map((item) => ({
@@ -72,7 +90,18 @@ export default function PengajuanFormModal({ open, onClose, onSaved }) {
           harga: Number(item.harga) || 0,
           ppn: Number(item.ppn) || 0,
         })),
-      })
+      }
+
+      // File proposal butuh multipart/form-data - array/objek dikonversi
+      // ke notasi bracket ('detil[0][uraian]', dst) supaya tetap kebaca
+      // sebagai array oleh Laravel di sisi backend.
+      const formData = new FormData()
+      appendToFormData(formData, payload)
+      if (fileProposal) {
+        formData.append('file_proposal', fileProposal)
+      }
+
+      await api.post('/yayasan/pengajuan', formData)
       onSaved?.()
       onClose()
     } catch (err) {
@@ -253,6 +282,29 @@ export default function PengajuanFormModal({ open, onClose, onSaved }) {
             </div>
           </div>
         )}
+
+        <div>
+          <label className="mb-1 block text-sm font-medium text-slate-700">
+            File Proposal <span className="font-normal text-slate-400">(opsional)</span>
+          </label>
+          <input
+            type="file"
+            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+            onChange={(e) => {
+              const file = e.target.files?.[0] || null
+              if (file && file.size > MAX_FILE_PROPOSAL_MB * 1024 * 1024) {
+                setError(`Ukuran file proposal maksimal ${MAX_FILE_PROPOSAL_MB}MB.`)
+                e.target.value = ''
+                setFileProposal(null)
+                return
+              }
+              setError(null)
+              setFileProposal(file)
+            }}
+            className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-indigo-700 hover:file:bg-indigo-100"
+          />
+          <p className="mt-1 text-xs text-slate-400">Format PDF/DOC/DOCX/JPG/PNG, maks {MAX_FILE_PROPOSAL_MB}MB.</p>
+        </div>
 
         <div>
           <label className="mb-1 block text-sm font-medium text-slate-700">Rincian Item</label>

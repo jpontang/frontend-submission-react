@@ -1,5 +1,6 @@
 const STATUS_CONFIG = {
   diajukan: { label: 'Diajukan', className: 'bg-amber-50 text-amber-700' },
+  revisi_divisi: { label: 'Revisi (Divisi)', className: 'bg-orange-50 text-orange-700' },
   disetujui_divisi: { label: 'Disetujui Divisi', className: 'bg-blue-50 text-blue-700' },
   revisi_qc: { label: 'Revisi (QC)', className: 'bg-orange-50 text-orange-700' },
   disetujui_qc: { label: 'Disetujui QC', className: 'bg-cyan-50 text-cyan-700' },
@@ -8,9 +9,10 @@ const STATUS_CONFIG = {
 }
 
 /**
- * Warna per tahap alur pengajuan: diajukan (kuning) -> disetujui_divisi
- * (biru) -> revisi_qc (oranye, perlu perbaikan) / disetujui_qc (cyan) ->
- * disetujui_bendahara (hijau, final) / ditolak (merah, final).
+ * Warna per tahap alur pengajuan: diajukan (kuning) -> revisi_divisi
+ * (oranye, perlu perbaikan) / disetujui_divisi (biru) -> revisi_qc (oranye,
+ * perlu perbaikan) / disetujui_qc (cyan) -> disetujui_bendahara (hijau,
+ * final) / ditolak (merah, final).
  */
 export default function PengajuanStatusBadge({ status }) {
   const config = STATUS_CONFIG[status] || { label: status, className: 'bg-slate-100 text-slate-600' }

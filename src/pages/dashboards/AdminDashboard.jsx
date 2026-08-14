@@ -19,10 +19,11 @@ function formatRupiah(value) {
   }).format(value || 0)
 }
 
-const STATUS_ORDER = ['diajukan', 'disetujui_divisi', 'revisi_qc', 'disetujui_qc', 'disetujui_bendahara', 'ditolak']
+const STATUS_ORDER = ['diajukan', 'revisi_divisi', 'disetujui_divisi', 'revisi_qc', 'disetujui_qc', 'disetujui_bendahara', 'ditolak']
 
 const STATUS_LABELS = {
   diajukan: 'Diajukan',
+  revisi_divisi: 'Revisi Divisi',
   disetujui_divisi: 'Disetujui Divisi',
   revisi_qc: 'Revisi QC',
   disetujui_qc: 'Disetujui QC',
@@ -33,6 +34,7 @@ const STATUS_LABELS = {
 // Warna disamakan dgn PengajuanStatusBadge (amber/blue/orange/cyan/emerald/rose).
 const STATUS_COLORS = {
   diajukan: '#f59e0b',
+  revisi_divisi: '#f97316',
   disetujui_divisi: '#3b82f6',
   revisi_qc: '#f97316',
   disetujui_qc: '#06b6d4',
@@ -40,7 +42,7 @@ const STATUS_COLORS = {
   ditolak: '#f43f5e',
 }
 
-const PENDING_STATUSES = ['diajukan', 'disetujui_divisi', 'disetujui_qc', 'revisi_qc']
+const PENDING_STATUSES = ['diajukan', 'revisi_divisi', 'disetujui_divisi', 'disetujui_qc', 'revisi_qc']
 
 const BULAN_LABEL = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des']
 

@@ -72,6 +72,24 @@ export default function PengajuanDetailModal({ open, onClose, pengajuan, roleId,
     }
   }
 
+  async function downloadFileProposal() {
+    setBusy(true)
+    setError(null)
+    try {
+      const res = await api.get(`/yayasan/pengajuan/${pengajuan.id}/file-proposal`, { responseType: 'blob' })
+      const url = window.URL.createObjectURL(new Blob([res.data]))
+      const link = document.createElement('a')
+      link.href = url
+      link.download = pengajuan.nama_file
+      link.click()
+      window.URL.revokeObjectURL(url)
+    } catch (err) {
+      setError(err.response?.data?.msg || 'Gagal mengunduh file proposal.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function downloadPdf() {
     setBusy(true)
     setError(null)
@@ -178,6 +196,17 @@ export default function PengajuanDetailModal({ open, onClose, pengajuan, roleId,
           )}
         </dl>
 
+        {pengajuan.nama_file && (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={downloadFileProposal}
+            className="flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+          >
+            📎 Unduh File Proposal
+          </button>
+        )}
+
         <div>
           <p className="mb-1 text-xs font-semibold uppercase text-slate-400">Rincian Item</p>
           <div className="divide-y divide-slate-100 overflow-hidden rounded-lg border border-slate-200">
@@ -193,7 +222,10 @@ export default function PengajuanDetailModal({ open, onClose, pengajuan, roleId,
         </div>
 
         <div className="space-y-1 rounded-lg bg-slate-50 p-3 text-xs text-slate-500">
-          <p>Divisi: {pengajuan.disetujui_divisi_oleh ? `disetujui ${formatTanggal(pengajuan.tanggal_disetujui_divisi)}` : 'belum'}</p>
+          <p>
+            Divisi: {pengajuan.disetujui_divisi_oleh ? `disetujui ${formatTanggal(pengajuan.tanggal_disetujui_divisi)}` : 'belum'}
+            {pengajuan.status === 'revisi_divisi' && pengajuan.catatan_divisi && ` — diminta revisi: "${pengajuan.catatan_divisi}"`}
+          </p>
           <p>
             QC: {pengajuan.disetujui_qc_oleh ? `ACC ${formatTanggal(pengajuan.tanggal_disetujui_qc)}` : 'belum'}
             {pengajuan.catatan_qc && ` — "${pengajuan.catatan_qc}"`}
@@ -227,6 +259,13 @@ export default function PengajuanDetailModal({ open, onClose, pengajuan, roleId,
               className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-60"
             >
               Setujui (Divisi)
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowRevisi((v) => !v)}
+              className="rounded-lg border border-orange-300 px-4 py-2 text-sm font-medium text-orange-600 hover:bg-orange-50"
+            >
+              Minta Revisi
             </button>
             <button
               type="button"
@@ -283,6 +322,35 @@ export default function PengajuanDetailModal({ open, onClose, pengajuan, roleId,
               className="rounded-lg border border-rose-300 px-4 py-2 text-sm font-medium text-rose-600 hover:bg-rose-50"
             >
               Tolak
+            </button>
+          </div>
+        )}
+
+        {/* Revisi Divisi: pengaju perbaiki lalu submit ulang, balik ke antrian divisi */}
+        {pengajuan.status === 'revisi_divisi' && canDivisi && (
+          <div className="space-y-3 rounded-lg border border-orange-200 bg-orange-50 p-3">
+            {pengajuan.catatan_divisi && (
+              <p className="text-sm text-orange-800">Catatan: "{pengajuan.catatan_divisi}"</p>
+            )}
+            <p className="text-sm text-orange-800">Perbaiki rincian item lalu submit ulang.</p>
+            <DetilPengajuanEditor items={resubmitItems} onChange={setResubmitItems} />
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() =>
+                runAction('resubmit', {
+                  detil: resubmitItems.map((item) => ({
+                    uraian: item.uraian,
+                    qty: Number(item.qty) || 1,
+                    satuan: item.satuan || null,
+                    harga: Number(item.harga) || 0,
+                    ppn: Number(item.ppn) || 0,
+                  })),
+                })
+              }
+              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-60"
+            >
+              Submit Ulang
             </button>
           </div>
         )}
@@ -397,7 +465,7 @@ export default function PengajuanDetailModal({ open, onClose, pengajuan, roleId,
             <button
               type="button"
               disabled={busy || !catatan.trim()}
-              onClick={() => runAction('revise-qc', { catatan })}
+              onClick={() => runAction(pengajuan.status === 'diajukan' ? 'revise-divisi' : 'revise-qc', { catatan })}
               className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-500 disabled:opacity-60"
             >
               Kirim Permintaan Revisi
