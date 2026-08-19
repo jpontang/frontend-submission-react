@@ -10,6 +10,7 @@ import SppUnitDetailModal from '../../components/SppUnitDetailModal'
 import { useAuth } from '../../context/AuthContext'
 import { useApp } from '../../context/AppContext'
 import api from '../../lib/api'
+import { buildTree } from '../../lib/divisiTree'
 
 function formatRupiah(value) {
   return new Intl.NumberFormat('id-ID', {
@@ -25,10 +26,18 @@ function formatRupiah(value) {
 const STATUS_PERLU_TINDAKAN = ['diajukan', 'revisi_divisi', 'revisi_qc']
 
 /**
- * Dashboard Kepala Divisi (role DIVISI YAYASAN) - ringkasan pengajuan
- * divisinya sendiri + turunan (dibatasi backend lewat DivisiScopeMiddleware,
- * jadi GET /yayasan/pengajuan di sini otomatis cuma balikin punya scope-nya
- * tanpa perlu filter tambahan di frontend).
+ * Dashboard role DIVISI YAYASAN - ringkasan pengajuan divisinya sendiri +
+ * turunan (dibatasi backend lewat DivisiScopeMiddleware, jadi GET
+ * /yayasan/pengajuan di sini otomatis cuma balikin punya scope-nya tanpa
+ * perlu filter tambahan di frontend).
+ *
+ * Semua akun role ini disebut "Parent Divisi" (bukan role terpisah dari
+ * Kepala Divisi - satu dashboard yang sama dipakai bersama). Supaya user
+ * tidak bingung dashboard ini punya/divisi unit mana (SDIT 1 vs SDIT 2 vs
+ * Direktorat, dst - semuanya pakai role & dashboard yang sama), judulnya
+ * disertai nama divisi root yang dipimpin user (lihat namaDivisiUtama di
+ * bawah, dari root saldoRows - divisi yang parent_divisi_id-nya di luar
+ * scope-nya sendiri).
  */
 export default function DivisiYayasanDashboard() {
   const { roleId } = useAuth()
@@ -90,6 +99,28 @@ export default function DivisiYayasanDashboard() {
   )
 
   const totalSaldo = useMemo(() => saldoRows.reduce((sum, d) => sum + d.saldo, 0), [saldoRows])
+
+  // Root(s) dari saldoRows = divisi yang dipimpin user sendiri (parent_divisi_id-nya
+  // di luar scope, atau null). Namanya dipakai di judul dashboard supaya jelas ini
+  // punya unit/divisi mana. jumlahSubDivisi dipakai buat nentuin perlu tidaknya
+  // tabel breakdown saldo per sub-divisi di bawah (percuma kalau cuma 1 baris).
+  const divisiTree = useMemo(() => buildTree(saldoRows), [saldoRows])
+  const namaDivisiUtama = useMemo(
+    () => divisiTree.map((root) => root.nama_divisi).join(', '),
+    [divisiTree]
+  )
+  const jumlahSubDivisi = useMemo(
+    () => divisiTree.reduce((sum, root) => sum + root.children.length, 0),
+    [divisiTree]
+  )
+  const isParentDivisi = jumlahSubDivisi > 0
+
+  const dashboardTitle = namaDivisiUtama
+    ? `Dashboard Parent Divisi — ${namaDivisiUtama}`
+    : 'Dashboard Parent Divisi'
+  const dashboardSubtitle = isParentDivisi
+    ? `Ringkasan pengajuan divisi ${namaDivisiUtama} & ${jumlahSubDivisi} sub-divisi di bawahnya.`
+    : `Ringkasan pengajuan divisi ${namaDivisiUtama || 'Anda'}.`
 
   const periodeAktif = periode?.[0]?.nama_periode || '2026/2027'
 
@@ -218,8 +249,8 @@ export default function DivisiYayasanDashboard() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold text-slate-900">Dashboard Kepala Divisi</h1>
-          <p className="text-sm text-slate-500">Ringkasan pengajuan divisi Anda &amp; turunannya.</p>
+          <h1 className="text-xl font-semibold text-slate-900">{dashboardTitle}</h1>
+          <p className="text-sm text-slate-500">{dashboardSubtitle}</p>
         </div>
 
         <button
@@ -245,7 +276,11 @@ export default function DivisiYayasanDashboard() {
       <div>
         <h3 className="mb-3 text-sm font-semibold text-slate-700">Saldo Kas Berjalan</h3>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <StatCard label="Total Saldo (Divisi Anda + Turunan)" value={formatRupiah(totalSaldo)} icon={Wallet} />
+          <StatCard
+            label={isParentDivisi ? 'Total Saldo (Divisi Anda + Sub-Divisi)' : 'Saldo Divisi Anda'}
+            value={formatRupiah(totalSaldo)}
+            icon={Wallet}
+          />
           <InfoStatCard
             title="Persentase SPP Masuk"
             period={periodeAktif}
@@ -256,13 +291,19 @@ export default function DivisiYayasanDashboard() {
             // onDetailClick={() => setShowSppDetail(true)} kalau sudah siap.
           />
         </div>
-        <div className="mt-3">
-          <DataTable
-            columns={kolomSaldo}
-            rows={saldoRows}
-            emptyText={saldoLoading ? 'Memuat data...' : 'Belum ada divisi.'}
-          />
-        </div>
+        {/* Tabel breakdown saldo per divisi cuma berguna kalau ada lebih dari
+            1 baris (Parent Divisi menaungi sub-divisi). Kepala Divisi leaf
+            sudah terwakili penuh oleh StatCard saldo di atas, jadi tabelnya
+            di-skip supaya tidak menampilkan 1 baris yang redundan. */}
+        {isParentDivisi && (
+          <div className="mt-3">
+            <DataTable
+              columns={kolomSaldo}
+              rows={saldoRows}
+              emptyText={saldoLoading ? 'Memuat data...' : 'Belum ada divisi.'}
+            />
+          </div>
+        )}
       </div>
 
       <div>

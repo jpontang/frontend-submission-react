@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { FileText, Wallet, Clock, CircleX } from 'lucide-react'
+import { FileText, Wallet, Clock, CircleX, Landmark } from 'lucide-react'
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import StatCard from '../../components/StatCard'
 import InfoStatCard from '../../components/InfoStatCard'
@@ -62,12 +62,14 @@ export default function AdminDashboard() {
     sppFull,
     sppUnitMasuk,
     sppUnitAll,
+    totalDaftarUlang,
     loading: sppLoading,
     fetchPeriode,
     fetchAllSppMasuk,
     fetchAllSppFull,
     fetchSppUnitMasuk,
     fetchSppUnitAll,
+    fetchTotalPmbDaful,
   } = useApp()
   const [showSppDetail, setShowSppDetail] = useState(false)
 
@@ -87,7 +89,15 @@ export default function AdminDashboard() {
     fetchAllSppFull()
     fetchSppUnitMasuk()
     fetchSppUnitAll()
-  }, [fetchPeriode, fetchAllSppMasuk, fetchAllSppFull, fetchSppUnitMasuk, fetchSppUnitAll])
+    fetchTotalPmbDaful()
+  }, [fetchPeriode, fetchAllSppMasuk, fetchAllSppFull, fetchSppUnitMasuk, fetchSppUnitAll, fetchTotalPmbDaful])
+
+  // getTotalPmbDaful() balikin array (di-group by kode_jenis_biaya, tapi query-nya
+  // sudah difilter ke nomor_pembayaran diawali '3' = Daftar Ulang/DPP), jadi
+  // praktisnya cuma 1 baris. nama_jenis_biaya dipakai sbg label kalau ada,
+  // supaya labelnya ikut nama asli di tabel jenis_biaya (bukan di-hardcode).
+  const daftarUlang = totalDaftarUlang?.[0]
+  const totalDaftarUlangValue = Number(daftarUlang?.total_daful || 0)
 
   const periodeAktif = periode?.[0]?.nama_periode || '2026/2027'
   const bulanIni = useMemo(
@@ -186,13 +196,19 @@ export default function AdminDashboard() {
         <StatCard label="Ditolak" value={stats.ditolak} icon={CircleX} accent="rose" />
       </div>
 
-      <div className="max-w-sm">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 max-w-2xl">
         <InfoStatCard
           title="Total SPP Masuk"
           period={periodeAktif}
           value={sppLoading.sppMasuk ? '...' : formatRupiah(sppMasuk)}
           percentage={persenSppMasuk}
           onDetailClick={() => setShowSppDetail(true)}
+        />
+        <StatCard
+          label={daftarUlang?.nama_jenis_biaya || 'Biaya Daftar Ulang (DPP)'}
+          value={sppLoading.totalDaftarUlang ? '...' : formatRupiah(totalDaftarUlangValue)}
+          icon={Landmark}
+          accent="indigo"
         />
       </div>
 

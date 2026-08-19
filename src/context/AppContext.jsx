@@ -18,6 +18,7 @@ const RESOURCES = [
   { key: 'sppUnitMasuk', endpoint: '/sppUnitMasuk', fetchName: 'fetchSppUnitMasuk' },
   { key: 'sppUnitAll', endpoint: '/sppUnitAll', fetchName: 'fetchSppUnitAll' },
   { key: 'sppKelasAll', endpoint: '/sppKelasAll', fetchName: 'fetchSppKelasAll' },
+  { key: 'totalDaftarUlang', endpoint: '/getTotalPmbDaful', fetchName: 'fetchTotalPmbDaful' },
   { key: 'budgetDept', endpoint: '/budgetDept', fetchName: 'fetchBudgetDept' },
   { key: 'totalTagihanSPP', endpoint: '/getTotalTagihanSPP', fetchName: 'fetchTotalTagihanSPP' },
   { key: 'jenisBiaya', endpoint: '/getJenisBiaya', fetchName: 'fetchJenisBiaya', method: 'get' },
