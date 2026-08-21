@@ -98,7 +98,18 @@ export default function QCDashboard() {
       header: 'Disetujui Divisi',
       render: (row) => formatTanggal(row.tanggal_disetujui_divisi),
     },
-    { key: 'status', header: 'Status', render: (row) => <PengajuanStatusBadge status={row.status} /> },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (row) => (
+        <PengajuanStatusBadge
+          status={row.status}
+          jenisPengajuan={row.jenis_pengajuan}
+          pdfTerkirim={row.pdf_terkirim_ke_suplayer}
+          sudahDicairkan={row.sudah_dicairkan}
+        />
+      ),
+    },
     {
       key: 'actions',
       header: 'Aksi',

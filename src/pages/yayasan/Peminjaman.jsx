@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Plus } from 'lucide-react'
 import DataTable from '../../components/DataTable'
 import StatCard from '../../components/StatCard'
@@ -49,6 +50,8 @@ export default function Peminjaman() {
   const [detailError, setDetailError] = useState(null)
   const [statusFilter, setStatusFilter] = useState('')
 
+  const [searchParams, setSearchParams] = useSearchParams()
+
   const loadData = useCallback(() => {
     setLoading(true)
     setError(null)
@@ -71,6 +74,26 @@ export default function Peminjaman() {
       .then(({ data }) => setSelected(data))
       .catch((err) => setDetailError(err.response?.data?.msg || 'Gagal memuat detail peminjaman.'))
   }
+
+  // Dibuka lewat klik notifikasi (NotificationBell -> navigate ke
+  // `?open=<id>`) - begitu terbaca, langsung buka modal review-nya &
+  // bersihkan query param-nya (replace, bukan push) supaya refresh/back
+  // tidak membuka ulang modal yang sama.
+  useEffect(() => {
+    const openId = searchParams.get('open')
+    if (!openId) return
+
+    openDetail({ id: openId })
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        next.delete('open')
+        return next
+      },
+      { replace: true }
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
 
   const counts = useMemo(() => {
     const base = {

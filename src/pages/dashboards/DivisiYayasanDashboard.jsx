@@ -25,6 +25,28 @@ function formatRupiah(value) {
 // disubmit ulang.
 const STATUS_PERLU_TINDAKAN = ['diajukan', 'revisi_divisi', 'revisi_qc']
 
+// Sama seperti gate `canValidasiPenerimaan` di PengajuanDetailModal - kalau
+// TIDAK disamakan di sini, pengajuan yang sebenarnya sudah butuh
+// dikonfirmasi penerimaannya (PO terkirim/dana dicairkan) malah nyasar ke
+// bucket "Dalam Proses" yang cuma statistik, tidak pernah muncul sbg
+// item yang perlu ditindaklanjuti - makanya kepala/parent divisi tidak
+// pernah lihat menunya. `can_konfirmasi_penerimaan` dari backend
+// (PengajuanController::appendCanKonfirmasiPenerimaan) memastikan cuma
+// yang benar2 berwenang (pengaju/kepala divisi/kepala parent) yang
+// dihitung, bukan sekadar berstatus begitu.
+function butuhKonfirmasiPenerimaan(row) {
+  const sudahDikirim = row.jenis_pengajuan === 'barang' ? row.pdf_terkirim_ke_suplayer : row.sudah_dicairkan
+
+  return (
+    row.can_konfirmasi_penerimaan &&
+    (row.status === 'diterima_sebagian' || (row.status === 'disetujui_bendahara' && sudahDikirim))
+  )
+}
+
+function butuhTindakan(row) {
+  return STATUS_PERLU_TINDAKAN.includes(row.status) || butuhKonfirmasiPenerimaan(row)
+}
+
 /**
  * Dashboard role DIVISI YAYASAN - ringkasan pengajuan divisinya sendiri +
  * turunan (dibatasi backend lewat DivisiScopeMiddleware, jadi GET
@@ -171,12 +193,15 @@ export default function DivisiYayasanDashboard() {
   const counts = useMemo(() => {
     const now = new Date()
     const base = { perluTindakan: 0, dalamProses: 0, selesaiBulanIni: 0, ditolak: 0 }
-    // disetujui_bendahara/diterima_sebagian/bermasalah masih "dalam proses"
-    // - dananya sudah keluar tapi pengaju belum konfirmasi terima lengkap
-    // (lihat Pengajuan::canValidasiPenerimaan()). Baru dihitung
-    // selesaiBulanIni begitu statusnya 'selesai' (dikonfirmasi lengkap).
+    // disetujui_bendahara/diterima_sebagian yang BELUM butuh konfirmasi
+    // penerimaan (mis. dana belum dicairkan/PO belum terkirim) & bermasalah
+    // masih "dalam proses". Begitu sudah butuh konfirmasi (lihat
+    // butuhKonfirmasiPenerimaan), dihitung perluTindakan, bukan dalamProses
+    // (else if di bawah otomatis skip krn kondisi pertama sudah true).
+    // Baru dihitung selesaiBulanIni begitu statusnya 'selesai'
+    // (dikonfirmasi lengkap).
     rows.forEach((row) => {
-      if (STATUS_PERLU_TINDAKAN.includes(row.status)) base.perluTindakan += 1
+      if (butuhTindakan(row)) base.perluTindakan += 1
       else if (
         ['disetujui_divisi', 'disetujui_qc', 'disetujui_bendahara', 'diterima_sebagian', 'bermasalah'].includes(
           row.status
@@ -195,10 +220,7 @@ export default function DivisiYayasanDashboard() {
     return base
   }, [rows])
 
-  const perluTindakan = useMemo(
-    () => rows.filter((row) => STATUS_PERLU_TINDAKAN.includes(row.status)),
-    [rows]
-  )
+  const perluTindakan = useMemo(() => rows.filter(butuhTindakan), [rows])
 
   const terbaru = useMemo(() => rows.slice(0, 8), [rows])
 
@@ -232,7 +254,7 @@ export default function DivisiYayasanDashboard() {
         onClick={() => openDetail(row)}
         className="rounded-lg bg-indigo-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-indigo-500"
       >
-        {STATUS_PERLU_TINDAKAN.includes(row.status) ? 'Tindak Lanjut' : 'Detail'}
+        {butuhTindakan(row) ? 'Tindak Lanjut' : 'Detail'}
       </button>
     ),
   }
@@ -251,7 +273,18 @@ export default function DivisiYayasanDashboard() {
       header: 'Nilai',
       render: (row) => formatRupiah(row.total_nilai_pengajuan),
     },
-    { key: 'status', header: 'Status', render: (row) => <PengajuanStatusBadge status={row.status} /> },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (row) => (
+        <PengajuanStatusBadge
+          status={row.status}
+          jenisPengajuan={row.jenis_pengajuan}
+          pdfTerkirim={row.pdf_terkirim_ke_suplayer}
+          sudahDicairkan={row.sudah_dicairkan}
+        />
+      ),
+    },
   ]
 
   return (

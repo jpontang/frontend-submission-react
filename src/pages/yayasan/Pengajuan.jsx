@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Plus } from 'lucide-react'
 import DataTable from '../../components/DataTable'
 import StatCard from '../../components/StatCard'
@@ -15,6 +16,21 @@ function formatRupiah(value) {
     currency: 'IDR',
     maximumFractionDigits: 0,
   }).format(value || 0)
+}
+
+// Sama seperti gate `canValidasiPenerimaan` di PengajuanDetailModal - kalau
+// tidak disamakan, pengajuan yang sudah butuh konfirmasi penerimaan (PO
+// terkirim/dana dicairkan) tidak pernah kehitung sbg "perlu tindakan" utk
+// role Divisi Yayasan. `can_konfirmasi_penerimaan` dari backend
+// (PengajuanController::appendCanKonfirmasiPenerimaan) memastikan cuma yang
+// benar2 berwenang (pengaju/kepala divisi/kepala parent) yang dihitung.
+function butuhKonfirmasiPenerimaan(row) {
+  const sudahDikirim = row.jenis_pengajuan === 'barang' ? row.pdf_terkirim_ke_suplayer : row.sudah_dicairkan
+
+  return (
+    row.can_konfirmasi_penerimaan &&
+    (row.status === 'diterima_sebagian' || (row.status === 'disetujui_bendahara' && sudahDikirim))
+  )
 }
 
 /**
@@ -45,6 +61,8 @@ export default function PengajuanYayasan() {
   const [pencairanLoading, setPencairanLoading] = useState(false)
   const [pencairanError, setPencairanError] = useState(null)
 
+  const [searchParams, setSearchParams] = useSearchParams()
+
   function openDetail(row) {
     setDetailError(null)
     api
@@ -52,6 +70,26 @@ export default function PengajuanYayasan() {
       .then(({ data }) => setSelected(data))
       .catch((err) => setDetailError(err.response?.data?.msg || 'Gagal memuat detail pengajuan.'))
   }
+
+  // Dibuka lewat klik notifikasi (NotificationBell -> navigate ke
+  // `?open=<id>`) - begitu terbaca, langsung buka modal review-nya &
+  // bersihkan query param-nya (replace, bukan push) supaya refresh/back
+  // tidak membuka ulang modal yang sama.
+  useEffect(() => {
+    const openId = searchParams.get('open')
+    if (!openId) return
+
+    openDetail({ id: openId })
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        next.delete('open')
+        return next
+      },
+      { replace: true }
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
 
   const loadData = useCallback(() => {
     setLoading(true)
@@ -132,13 +170,17 @@ export default function PengajuanYayasan() {
   }, [rows])
 
   // Kartu "perlu tindakan saya" disesuaikan per role: divisi lihat antrian
-  // tahap 1, QC tahap 2, Bendahara tahap 3.
+  // tahap 1 + yang butuh konfirmasi penerimaan, QC tahap 2, Bendahara tahap 3.
+  const jumlahButuhKonfirmasiPenerimaan = useMemo(
+    () => rows.filter(butuhKonfirmasiPenerimaan).length,
+    [rows]
+  )
   const myQueueCount =
     numericRoleId === ROLES.QC
       ? counts.disetujui_divisi
       : numericRoleId === ROLES.BENDAHARA
         ? counts.disetujui_qc
-        : counts.diajukan + counts.revisi_divisi + counts.revisi_qc
+        : counts.diajukan + counts.revisi_divisi + counts.revisi_qc + jumlahButuhKonfirmasiPenerimaan
 
   const columns = [
     { key: 'kode_pengajuan', header: 'Kode' },
@@ -157,7 +199,14 @@ export default function PengajuanYayasan() {
     {
       key: 'status',
       header: 'Status',
-      render: (row) => <PengajuanStatusBadge status={row.status} />,
+      render: (row) => (
+        <PengajuanStatusBadge
+          status={row.status}
+          jenisPengajuan={row.jenis_pengajuan}
+          pdfTerkirim={row.pdf_terkirim_ke_suplayer}
+          sudahDicairkan={row.sudah_dicairkan}
+        />
+      ),
     },
     {
       key: 'actions',

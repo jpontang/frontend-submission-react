@@ -14,6 +14,7 @@ import {
   History,
   CircleCheck,
   HandCoins,
+  MessageCircle,
 } from 'lucide-react'
 
 export const ROLES = {
@@ -125,11 +126,34 @@ export const NAV_ITEMS = [
     roles: [ROLES.ADMIN],
     children: [{ to: '/yayasan/cron-log', label: 'Log Cron' }],
   },
-  { to: '/settings', label: 'Settings', icon: Settings },
+  {
+    to: '/whatsapp-log',
+    label: 'Log WhatsApp',
+    icon: MessageCircle,
+    roles: [ROLES.ADMIN, ROLES.BENDAHARA],
+  },
+  {
+    label: 'Settings',
+    icon: Settings,
+    // 'Profil Akun' tampil ke semua role (item.roles kosong = semua role
+    // yg sudah login), 'WhatsApp API' dibatasi Admin lewat `roles` di child
+    // ini sendiri (lihat getNavItemsForRole - beda dari grup Yayasan/Log yg
+    // pembatasannya cuma di level grup, krn semua childnya memang admin-only).
+    children: [
+      { to: '/settings', label: 'Profil Akun' },
+      { to: '/whatsapp-setting', label: 'WhatsApp API', roles: [ROLES.ADMIN] },
+    ],
+  },
 ]
 
 export function getNavItemsForRole(roleId) {
   return NAV_ITEMS.filter((item) => !item.roles || item.roles.includes(Number(roleId)))
+    .map((item) =>
+      item.children
+        ? { ...item, children: item.children.filter((child) => !child.roles || child.roles.includes(Number(roleId))) }
+        : item
+    )
+    .filter((item) => !item.children || item.children.length > 0)
 }
 
 // Dipakai UserLayout utk set document.title otomatis sesuai menu yang lagi

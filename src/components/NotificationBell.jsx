@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Bell, BellOff, BellRing, Check, Volume2, VolumeX } from 'lucide-react'
 import { useNotifications } from '../context/NotificationContext'
 
@@ -24,6 +25,7 @@ function formatRelativeTime(value) {
  */
 export default function NotificationBell() {
   const notif = useNotifications()
+  const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const containerRef = useRef(null)
 
@@ -55,8 +57,21 @@ export default function NotificationBell() {
     setOpen((v) => !v)
   }
 
+  // Klik notifikasi langsung membuka modal review pengajuan/peminjaman
+  // terkait di halamannya (lewat query param `open`, dibaca oleh
+  // Pengajuan.jsx/Peminjaman.jsx) - jadi tidak perlu pindah halaman manual
+  // lalu cari sendiri barisnya di tabel. navigate() ke rute yang sama pun
+  // tetap memicu perubahan query param (SPA, tanpa reload penuh), jadi
+  // berfungsi juga kalau user kebetulan sudah ada di halaman itu.
   function handleItemClick(item) {
     if (!item.is_read) markRead(item.id)
+    setOpen(false)
+
+    if (item.pengajuan?.id) {
+      navigate(`/yayasan/pengajuan?open=${item.pengajuan.id}`)
+    } else if (item.peminjaman?.id) {
+      navigate(`/yayasan/peminjaman?open=${item.peminjaman.id}`)
+    }
   }
 
   return (

@@ -79,7 +79,14 @@ export default function BendaharaReview() {
     {
       key: 'status',
       header: 'Status',
-      render: (row) => <PengajuanStatusBadge status={row.status} />,
+      render: (row) => (
+        <PengajuanStatusBadge
+          status={row.status}
+          jenisPengajuan={row.jenis_pengajuan}
+          pdfTerkirim={row.pdf_terkirim_ke_suplayer}
+          sudahDicairkan={row.sudah_dicairkan}
+        />
+      ),
     },
     {
       key: 'actions',

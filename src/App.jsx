@@ -25,6 +25,8 @@ import Peminjaman from './pages/yayasan/Peminjaman'
 import PotonganPendapatan from './pages/yayasan/PotonganPendapatan'
 import CronLog from './pages/yayasan/CronLog'
 import KasTransaksiYayasan from './pages/yayasan/KasTransaksiYayasan'
+import WhatsappSetting from './pages/WhatsappSetting'
+import WhatsappLog from './pages/WhatsappLog'
 
 export default function App() {
   return (
@@ -191,6 +193,22 @@ export default function App() {
           element={
             <RoleRoute allow={[ROLES.ADMIN]}>
               <KasTransaksiYayasan />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="whatsapp-setting"
+          element={
+            <RoleRoute allow={[ROLES.ADMIN]}>
+              <WhatsappSetting />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="whatsapp-log"
+          element={
+            <RoleRoute allow={[ROLES.ADMIN, ROLES.BENDAHARA]}>
+              <WhatsappLog />
             </RoleRoute>
           }
         />

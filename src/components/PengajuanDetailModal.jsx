@@ -33,6 +33,8 @@ export default function PengajuanDetailModal({ open, onClose, pengajuan, roleId,
   const [showDiterimaSebagian, setShowDiterimaSebagian] = useState(false)
   const [showLaporMasalah, setShowLaporMasalah] = useState(false)
   const [catatan, setCatatan] = useState('')
+  const [fotoPenerimaanFile, setFotoPenerimaanFile] = useState(null)
+  const [invoicePenerimaanFile, setInvoicePenerimaanFile] = useState(null)
   const [resubmitItems, setResubmitItems] = useState([])
 
   useEffect(() => {
@@ -42,6 +44,8 @@ export default function PengajuanDetailModal({ open, onClose, pengajuan, roleId,
     setShowDiterimaSebagian(false)
     setShowLaporMasalah(false)
     setCatatan('')
+    setFotoPenerimaanFile(null)
+    setInvoicePenerimaanFile(null)
     if (pengajuan?.detil) {
       setResubmitItems(
         pengajuan.detil.map((d) => ({
@@ -64,23 +68,52 @@ export default function PengajuanDetailModal({ open, onClose, pengajuan, roleId,
   const canBendahara = isAdmin || Number(roleId) === ROLES.BENDAHARA
 
   // Validasi penerimaan (confirm-diterima/diterima-sebagian/laporkan-masalah)
-  // cuma utk PENGAJU aslinya - backend yang validasi wewenang sebenarnya
-  // (lihat isAuthorizedPengaju di PengajuanController), di sini cuma
-  // penyesuaian tampilan spt tombol2 tahap lain. Sudah boleh begitu
-  // disetujui_bendahara & barang-nya PO terkirim / dana-nya dicairkan, atau
-  // sudah pernah ditandai 'diterima_sebagian' sebelumnya.
+  // cuma utk yang berwenang: pengaju aslinya, kepala divisinya, atau kepala
+  // PARENT divisinya - role DIVISI YAYASAN saja TIDAK cukup, krn satu
+  // divisi/scope bisa berisi banyak pengaju & staff biasa (siapa pun di
+  // scope bisa MELIHAT pengajuan siapa pun, lihat DivisiScopeMiddleware).
+  // `can_konfirmasi_penerimaan` dihitung backend
+  // (PengajuanController::appendCanKonfirmasiPenerimaan, sinkron persis
+  // dgn isAuthorizedKonfirmasiPenerimaan yang jadi wewenang SEBENARNYA) -
+  // JANGAN diganti balik ke cek role doang, itu penyebab tombolnya nongol
+  // ke orang yang bakal ditolak backend. Sudah boleh begitu
+  // disetujui_bendahara & barang-nya PO terkirim / dana-nya dicairkan,
+  // atau sudah pernah ditandai 'diterima_sebagian' sebelumnya.
   const sudahDikirimkanKePengaju =
     pengajuan.jenis_pengajuan === 'barang' ? pengajuan.pdf_terkirim_ke_suplayer : pengajuan.sudah_dicairkan
   const canValidasiPenerimaan =
-    canDivisi &&
+    pengajuan.can_konfirmasi_penerimaan &&
     (pengajuan.status === 'diterima_sebagian' ||
       (pengajuan.status === 'disetujui_bendahara' && sudahDikirimkanKePengaju))
+  // Sudah disetujui Bendahara & orangnya berwenang konfirmasi nanti, TAPI
+  // PO/dana belum benar2 dikirim/dicairkan - tombolnya belum boleh muncul
+  // (lihat canValidasiPenerimaan), jadi tampilkan alasannya di sini supaya
+  // tidak terlihat seperti menu-nya rusak/hilang begitu saja.
+  const menungguPengirimanKePengaju =
+    pengajuan.can_konfirmasi_penerimaan && pengajuan.status === 'disetujui_bendahara' && !sudahDikirimkanKePengaju
 
-  async function runAction(path, payload) {
+  // `files` opsional ({ foto_penerimaan, invoice_penerimaan }) - dipakai
+  // aksi validasi penerimaan (confirm-diterima/diterima-sebagian/laporkan-
+  // masalah) yang boleh menyertakan foto barang & invoice/kwitansi
+  // sekaligus, independen satu sama lain. Kalau salah satu/keduanya ada,
+  // payload dikirim sbg multipart/form-data (bukan JSON) supaya filenya
+  // ikut terkirim.
+  async function runAction(path, payload, files) {
     setBusy(true)
     setError(null)
     try {
-      await api.post(`/yayasan/pengajuan/${pengajuan.id}/${path}`, payload)
+      const hasFile = files && (files.foto_penerimaan || files.invoice_penerimaan)
+      if (hasFile) {
+        const formData = new FormData()
+        Object.entries(payload || {}).forEach(([key, value]) => {
+          if (value !== null && value !== undefined) formData.append(key, value)
+        })
+        if (files.foto_penerimaan) formData.append('foto_penerimaan', files.foto_penerimaan)
+        if (files.invoice_penerimaan) formData.append('invoice_penerimaan', files.invoice_penerimaan)
+        await api.post(`/yayasan/pengajuan/${pengajuan.id}/${path}`, formData)
+      } else {
+        await api.post(`/yayasan/pengajuan/${pengajuan.id}/${path}`, payload)
+      }
       onActionDone?.()
       onClose()
     } catch (err) {
@@ -103,6 +136,26 @@ export default function PengajuanDetailModal({ open, onClose, pengajuan, roleId,
       window.URL.revokeObjectURL(url)
     } catch (err) {
       setError(err.response?.data?.msg || 'Gagal mengunduh file proposal.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  // Dipakai bareng utk unduh foto barang maupun invoice/kwitansi
+  // penerimaan - dua lampiran terpisah dgn endpoint & nama file masing2.
+  async function downloadLampiranPenerimaan(endpoint, namaFile, gagalMsg) {
+    setBusy(true)
+    setError(null)
+    try {
+      const res = await api.get(`/yayasan/pengajuan/${pengajuan.id}/${endpoint}`, { responseType: 'blob' })
+      const url = window.URL.createObjectURL(new Blob([res.data]))
+      const link = document.createElement('a')
+      link.href = url
+      link.download = namaFile
+      link.click()
+      window.URL.revokeObjectURL(url)
+    } catch (err) {
+      setError(err.response?.data?.msg || gagalMsg)
     } finally {
       setBusy(false)
     }
@@ -139,6 +192,42 @@ export default function PengajuanDetailModal({ open, onClose, pengajuan, roleId,
     }
   }
 
+  // Alternatif kirim email - tersedia kapan pun (bukan cuma fallback saat
+  // email gagal), krn beberapa supplier lebih responsif di WhatsApp.
+  async function sendPoWhatsapp() {
+    setBusy(true)
+    setError(null)
+    try {
+      await api.post(`/yayasan/pengajuan/${pengajuan.id}/kirim-whatsapp-suplayer`)
+      onActionDone?.()
+    } catch (err) {
+      setError(err.response?.data?.msg || 'Gagal mengirim WhatsApp ke supplier.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  // Tandai PO terkirim TANPA benar2 kirim apa pun lewat sistem - dipakai
+  // kalau Bendahara sudah kirim PO lewat jalur lain di luar sistem (WA
+  // pribadi, telepon, ketemu langsung, dst) dan cuma perlu update
+  // statusnya di sini. Dikonfirmasi dulu (window.confirm) krn aksinya
+  // "percaya begitu saja" - tidak ada bukti pengiriman yg tercatat sistem.
+  async function tandaiPoTerkirimManual() {
+    if (!window.confirm('Tandai PO ini sudah dikirim ke supplier? Gunakan ini HANYA kalau PO memang sudah dikirim lewat cara lain di luar sistem.')) {
+      return
+    }
+    setBusy(true)
+    setError(null)
+    try {
+      await api.post(`/yayasan/pengajuan/${pengajuan.id}/tandai-po-terkirim`)
+      onActionDone?.()
+    } catch (err) {
+      setError(err.response?.data?.msg || 'Gagal menandai PO terkirim.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function markDicairkan() {
     setBusy(true)
     setError(null)
@@ -169,7 +258,12 @@ export default function PengajuanDetailModal({ open, onClose, pengajuan, roleId,
     >
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <PengajuanStatusBadge status={pengajuan.status} />
+          <PengajuanStatusBadge
+            status={pengajuan.status}
+            jenisPengajuan={pengajuan.jenis_pengajuan}
+            pdfTerkirim={pengajuan.pdf_terkirim_ke_suplayer}
+            sudahDicairkan={pengajuan.sudah_dicairkan}
+          />
           <span className="text-sm font-semibold text-slate-900">
             {formatRupiah(pengajuan.total_nilai_pengajuan)}
           </span>
@@ -270,6 +364,43 @@ export default function PengajuanDetailModal({ open, onClose, pengajuan, roleId,
             </p>
           )}
         </div>
+
+        {(pengajuan.foto_penerimaan || pengajuan.invoice_penerimaan) && (
+          <div className="flex flex-wrap gap-2">
+            {pengajuan.foto_penerimaan && (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() =>
+                  downloadLampiranPenerimaan(
+                    'foto-penerimaan',
+                    pengajuan.foto_penerimaan,
+                    'Gagal mengunduh foto barang.'
+                  )
+                }
+                className="flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+              >
+                📷 Unduh Foto Barang
+              </button>
+            )}
+            {pengajuan.invoice_penerimaan && (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() =>
+                  downloadLampiranPenerimaan(
+                    'invoice-penerimaan',
+                    pengajuan.invoice_penerimaan,
+                    'Gagal mengunduh invoice.'
+                  )
+                }
+                className="flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+              >
+                🧾 Unduh Invoice
+              </button>
+            )}
+          </div>
+        )}
 
         {error && (
           <p className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
@@ -436,6 +567,26 @@ export default function PengajuanDetailModal({ open, onClose, pengajuan, roleId,
               >
                 Kirim Email ke Supplier
               </button>
+              {/* Selalu tampil sbg alternatif (bukan cuma fallback kalau email
+                  gagal) - sama-sama menandai PO terkirim kalau berhasil. */}
+              <button
+                type="button"
+                disabled={busy}
+                onClick={sendPoWhatsapp}
+                className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-60"
+              >
+                Kirim via WhatsApp
+              </button>
+              {/* PO sudah dikirim di luar sistem (WA pribadi/telepon/dst) -
+                  tandai statusnya di sini tanpa benar2 mengirim apa pun. */}
+              <button
+                type="button"
+                disabled={busy}
+                onClick={tandaiPoTerkirimManual}
+                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+              >
+                Tandai Sudah Terkirim (Manual)
+              </button>
             </div>
           </div>
         )}
@@ -462,6 +613,14 @@ export default function PengajuanDetailModal({ open, onClose, pengajuan, roleId,
           </div>
         )}
 
+        {menungguPengirimanKePengaju && (
+          <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
+            {pengajuan.jenis_pengajuan === 'barang'
+              ? 'Sudah disetujui Bendahara, tapi PO belum dikirim ke supplier. Konfirmasi penerimaan baru bisa dilakukan setelah Bendahara mengirim PO.'
+              : 'Sudah disetujui Bendahara, tapi dana belum ditandai dicairkan. Konfirmasi penerimaan baru bisa dilakukan setelah dana dicairkan.'}
+          </div>
+        )}
+
         {/* Validasi Penerimaan: PENGAJU konfirmasi barang/dana sudah sampai
             di tangannya - beda dari blok "Selesai" di atas yang aksinya
             Bendahara (kirim PO/tandai dicairkan). Muncul begitu PO
@@ -474,11 +633,51 @@ export default function PengajuanDetailModal({ open, onClose, pengajuan, roleId,
                 ? `Sebelumnya ditandai baru diterima sebagian pada ${formatTanggal(pengajuan.tanggal_konfirmasi)}. Sudah lengkap atau ada masalah?`
                 : 'Konfirmasi apakah barang/dana ini sudah Anda terima.'}
             </p>
+
+            {/* Upload foto barang & invoice/kwitansi - opsional & independen
+                satu sama lain, khusus pengadaan barang. File yang sama
+                dipakai bersama oleh tombol mana pun yang diklik (Diterima
+                Lengkap/Sebagian/Lapor Masalah). */}
+            {pengajuan.jenis_pengajuan === 'barang' && (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-violet-800">
+                    Foto Barang <span className="font-normal text-violet-500">- opsional</span>
+                  </label>
+                  <input
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={(e) => setFotoPenerimaanFile(e.target.files?.[0] || null)}
+                    className="block w-full text-xs text-violet-700 file:mr-3 file:rounded-lg file:border-0 file:bg-violet-100 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-violet-700 hover:file:bg-violet-200"
+                  />
+                  <p className="mt-1 text-[11px] text-violet-500">Format PDF/JPG/PNG, maks 5MB.</p>
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-violet-800">
+                    Invoice / Kwitansi <span className="font-normal text-violet-500">- opsional</span>
+                  </label>
+                  <input
+                    type="file"
+                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                    onChange={(e) => setInvoicePenerimaanFile(e.target.files?.[0] || null)}
+                    className="block w-full text-xs text-violet-700 file:mr-3 file:rounded-lg file:border-0 file:bg-violet-100 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-violet-700 hover:file:bg-violet-200"
+                  />
+                  <p className="mt-1 text-[11px] text-violet-500">Format PDF/DOC/DOCX/JPG/PNG, maks 5MB.</p>
+                </div>
+              </div>
+            )}
+
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
                 disabled={busy}
-                onClick={() => runAction('confirm-diterima', { catatan: catatan || null })}
+                onClick={() =>
+                  runAction(
+                    'confirm-diterima',
+                    { catatan: catatan || null },
+                    { foto_penerimaan: fotoPenerimaanFile, invoice_penerimaan: invoicePenerimaanFile }
+                  )
+                }
                 className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-60"
               >
                 Diterima Lengkap
@@ -514,7 +713,12 @@ export default function PengajuanDetailModal({ open, onClose, pengajuan, roleId,
             <button
               type="button"
               disabled={busy || !catatan.trim()}
-              onClick={() => runAction('diterima-sebagian', { catatan })}
+              onClick={() =>
+                runAction('diterima-sebagian', { catatan }, {
+                  foto_penerimaan: fotoPenerimaanFile,
+                  invoice_penerimaan: invoicePenerimaanFile,
+                })
+              }
               className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-500 disabled:opacity-60"
             >
               Simpan Status Diterima Sebagian
@@ -535,7 +739,12 @@ export default function PengajuanDetailModal({ open, onClose, pengajuan, roleId,
             <button
               type="button"
               disabled={busy || !catatan.trim()}
-              onClick={() => runAction('laporkan-masalah', { catatan })}
+              onClick={() =>
+                runAction('laporkan-masalah', { catatan }, {
+                  foto_penerimaan: fotoPenerimaanFile,
+                  invoice_penerimaan: invoicePenerimaanFile,
+                })
+              }
               className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-500 disabled:opacity-60"
             >
               Kirim Laporan Masalah
