@@ -87,6 +87,7 @@ export default function PengajuanFormModal({ open, onClose, onSaved }) {
           uraian: item.uraian,
           qty: Number(item.qty) || 1,
           satuan: item.satuan || null,
+          keterangan: item.keterangan || null,
           harga: Number(item.harga) || 0,
           ppn: Number(item.ppn) || 0,
         })),

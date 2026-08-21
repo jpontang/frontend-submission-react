@@ -1,6 +1,6 @@
 import { Plus, Trash2 } from 'lucide-react'
 
-const EMPTY_ITEM = { uraian: '', qty: 1, satuan: '', harga: '', ppn: 0 }
+const EMPTY_ITEM = { uraian: '', qty: 1, satuan: '', keterangan: '', harga: '', ppn: 0 }
 
 function formatRupiah(value) {
   return new Intl.NumberFormat('id-ID', {
@@ -75,6 +75,13 @@ export default function DetilPengajuanEditor({ items, onChange }) {
               value={item.harga}
               onChange={(e) => updateItem(index, 'harga', e.target.value)}
               className="col-span-4 rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 sm:col-span-3"
+            />
+            <input
+              type="text"
+              placeholder="Keterangan (opsional) - mis. spesifikasi/warna/merk"
+              value={item.keterangan}
+              onChange={(e) => updateItem(index, 'keterangan', e.target.value)}
+              className="col-span-12 rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
             />
             <div className="col-span-10 flex items-center justify-between px-1 text-xs text-slate-500 sm:col-span-11">
               <span>PPN %:</span>

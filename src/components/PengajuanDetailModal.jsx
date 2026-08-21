@@ -44,6 +44,7 @@ export default function PengajuanDetailModal({ open, onClose, pengajuan, roleId,
           uraian: d.uraian,
           qty: d.qty,
           satuan: d.satuan || '',
+          keterangan: d.keterangan || '',
           harga: d.harga,
           ppn: d.ppn,
         }))
@@ -211,11 +212,14 @@ export default function PengajuanDetailModal({ open, onClose, pengajuan, roleId,
           <p className="mb-1 text-xs font-semibold uppercase text-slate-400">Rincian Item</p>
           <div className="divide-y divide-slate-100 overflow-hidden rounded-lg border border-slate-200">
             {(pengajuan.detil || []).map((item) => (
-              <div key={item.id} className="flex items-center justify-between px-3 py-2 text-sm">
+              <div key={item.id} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
                 <span className="text-slate-700">
                   {item.uraian} ({item.qty} {item.satuan || ''})
+                  {item.keterangan && (
+                    <span className="mt-0.5 block text-xs text-slate-400">{item.keterangan}</span>
+                  )}
                 </span>
-                <span className="font-medium text-slate-800">{formatRupiah(item.total)}</span>
+                <span className="whitespace-nowrap font-medium text-slate-800">{formatRupiah(item.total)}</span>
               </div>
             ))}
           </div>
@@ -343,6 +347,7 @@ export default function PengajuanDetailModal({ open, onClose, pengajuan, roleId,
                     uraian: item.uraian,
                     qty: Number(item.qty) || 1,
                     satuan: item.satuan || null,
+                    keterangan: item.keterangan || null,
                     harga: Number(item.harga) || 0,
                     ppn: Number(item.ppn) || 0,
                   })),
@@ -369,6 +374,7 @@ export default function PengajuanDetailModal({ open, onClose, pengajuan, roleId,
                     uraian: item.uraian,
                     qty: Number(item.qty) || 1,
                     satuan: item.satuan || null,
+                    keterangan: item.keterangan || null,
                     harga: Number(item.harga) || 0,
                     ppn: Number(item.ppn) || 0,
                   })),
