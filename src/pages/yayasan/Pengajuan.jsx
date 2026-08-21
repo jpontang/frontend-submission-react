@@ -120,6 +120,9 @@ export default function PengajuanYayasan() {
       revisi_qc: 0,
       disetujui_qc: 0,
       disetujui_bendahara: 0,
+      diterima_sebagian: 0,
+      selesai: 0,
+      bermasalah: 0,
       ditolak: 0,
     }
     rows.forEach((row) => {
@@ -192,13 +195,15 @@ export default function PengajuanYayasan() {
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-7">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-9">
         <StatCard label="Perlu Tindakan Saya" value={myQueueCount} accent="amber" />
         <StatCard label="Diajukan" value={counts.diajukan} />
         <StatCard label="Revisi Divisi" value={counts.revisi_divisi} accent="amber" />
         <StatCard label="Revisi QC" value={counts.revisi_qc} accent="amber" />
         <StatCard label="Disetujui QC" value={counts.disetujui_qc} accent="indigo" />
-        <StatCard label="Selesai" value={counts.disetujui_bendahara} accent="emerald" />
+        <StatCard label="Menunggu Konfirmasi" value={counts.disetujui_bendahara + counts.diterima_sebagian} accent="indigo" />
+        <StatCard label="Selesai" value={counts.selesai} accent="emerald" />
+        <StatCard label="Bermasalah" value={counts.bermasalah} accent="rose" />
         <StatCard label="Ditolak" value={counts.ditolak} accent="rose" />
       </div>
 
@@ -214,7 +219,10 @@ export default function PengajuanYayasan() {
           <option value="disetujui_divisi">Disetujui Divisi</option>
           <option value="revisi_qc">Revisi (QC)</option>
           <option value="disetujui_qc">Disetujui QC</option>
-          <option value="disetujui_bendahara">Disetujui Bendahara</option>
+          <option value="disetujui_bendahara">Menunggu Konfirmasi Terima</option>
+          <option value="diterima_sebagian">Diterima Sebagian</option>
+          <option value="selesai">Selesai</option>
+          <option value="bermasalah">Bermasalah</option>
           <option value="ditolak">Ditolak</option>
         </select>
       </div>

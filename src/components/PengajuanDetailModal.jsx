@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import Modal from './Modal'
-import PengajuanStatusBadge from './PengajuanStatusBadge'
+import PengajuanStatusBadge, { STATUS_CONFIG } from './PengajuanStatusBadge'
 import DetilPengajuanEditor from './DetilPengajuanEditor'
 import { ROLES } from '../config/navigation'
 import api from '../lib/api'
@@ -30,6 +30,8 @@ export default function PengajuanDetailModal({ open, onClose, pengajuan, roleId,
   const [error, setError] = useState(null)
   const [showReject, setShowReject] = useState(false)
   const [showRevisi, setShowRevisi] = useState(false)
+  const [showDiterimaSebagian, setShowDiterimaSebagian] = useState(false)
+  const [showLaporMasalah, setShowLaporMasalah] = useState(false)
   const [catatan, setCatatan] = useState('')
   const [resubmitItems, setResubmitItems] = useState([])
 
@@ -37,6 +39,8 @@ export default function PengajuanDetailModal({ open, onClose, pengajuan, roleId,
     setError(null)
     setShowReject(false)
     setShowRevisi(false)
+    setShowDiterimaSebagian(false)
+    setShowLaporMasalah(false)
     setCatatan('')
     if (pengajuan?.detil) {
       setResubmitItems(
@@ -58,6 +62,19 @@ export default function PengajuanDetailModal({ open, onClose, pengajuan, roleId,
   const canDivisi = isAdmin || Number(roleId) === ROLES.DIVISI_YAYASAN
   const canQc = isAdmin || Number(roleId) === ROLES.QC
   const canBendahara = isAdmin || Number(roleId) === ROLES.BENDAHARA
+
+  // Validasi penerimaan (confirm-diterima/diterima-sebagian/laporkan-masalah)
+  // cuma utk PENGAJU aslinya - backend yang validasi wewenang sebenarnya
+  // (lihat isAuthorizedPengaju di PengajuanController), di sini cuma
+  // penyesuaian tampilan spt tombol2 tahap lain. Sudah boleh begitu
+  // disetujui_bendahara & barang-nya PO terkirim / dana-nya dicairkan, atau
+  // sudah pernah ditandai 'diterima_sebagian' sebelumnya.
+  const sudahDikirimkanKePengaju =
+    pengajuan.jenis_pengajuan === 'barang' ? pengajuan.pdf_terkirim_ke_suplayer : pengajuan.sudah_dicairkan
+  const canValidasiPenerimaan =
+    canDivisi &&
+    (pengajuan.status === 'diterima_sebagian' ||
+      (pengajuan.status === 'disetujui_bendahara' && sudahDikirimkanKePengaju))
 
   async function runAction(path, payload) {
     setBusy(true)
@@ -239,6 +256,13 @@ export default function PengajuanDetailModal({ open, onClose, pengajuan, roleId,
             Bendahara:{' '}
             {pengajuan.disetujui_bendahara_oleh ? `ACC ${formatTanggal(pengajuan.tanggal_disetujui_bendahara)}` : 'belum'}
           </p>
+          {pengajuan.konfirmasi_oleh && (
+            <p>
+              Penerimaan: {STATUS_CONFIG[pengajuan.status]?.label || pengajuan.status} pada{' '}
+              {formatTanggal(pengajuan.tanggal_konfirmasi)}
+              {pengajuan.catatan_konfirmasi && ` — "${pengajuan.catatan_konfirmasi}"`}
+            </p>
+          )}
           {pengajuan.status === 'ditolak' && (
             <p className="text-rose-600">
               Ditolak pada tahap {pengajuan.ditolak_pada_tahap} — {formatTanggal(pengajuan.tanggal_ditolak)}
@@ -435,6 +459,87 @@ export default function PengajuanDetailModal({ open, onClose, pengajuan, roleId,
                 </button>
               </>
             )}
+          </div>
+        )}
+
+        {/* Validasi Penerimaan: PENGAJU konfirmasi barang/dana sudah sampai
+            di tangannya - beda dari blok "Selesai" di atas yang aksinya
+            Bendahara (kirim PO/tandai dicairkan). Muncul begitu PO
+            terkirim/dana dicairkan, atau kalau sebelumnya sempat ditandai
+            'diterima_sebagian' (masih bisa lanjut konfirmasi/lapor lagi). */}
+        {canValidasiPenerimaan && (
+          <div className="space-y-2 rounded-lg border border-violet-200 bg-violet-50 p-3">
+            <p className="text-sm text-violet-800">
+              {pengajuan.status === 'diterima_sebagian'
+                ? `Sebelumnya ditandai baru diterima sebagian pada ${formatTanggal(pengajuan.tanggal_konfirmasi)}. Sudah lengkap atau ada masalah?`
+                : 'Konfirmasi apakah barang/dana ini sudah Anda terima.'}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => runAction('confirm-diterima', { catatan: catatan || null })}
+                className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-60"
+              >
+                Diterima Lengkap
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowDiterimaSebagian((v) => !v)}
+                className="rounded-lg border border-amber-300 px-4 py-2 text-sm font-medium text-amber-700 hover:bg-amber-50"
+              >
+                Diterima Sebagian
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowLaporMasalah((v) => !v)}
+                className="rounded-lg border border-rose-300 px-4 py-2 text-sm font-medium text-rose-600 hover:bg-rose-50"
+              >
+                Laporkan Masalah
+              </button>
+            </div>
+          </div>
+        )}
+
+        {showDiterimaSebagian && (
+          <div className="space-y-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
+            <textarea
+              rows={2}
+              required
+              placeholder="Keterangan bagian yang sudah diterima / yang masih kurang (wajib diisi)"
+              value={catatan}
+              onChange={(e) => setCatatan(e.target.value)}
+              className="w-full rounded-lg border border-amber-300 px-3 py-2 text-sm outline-none focus:border-amber-500"
+            />
+            <button
+              type="button"
+              disabled={busy || !catatan.trim()}
+              onClick={() => runAction('diterima-sebagian', { catatan })}
+              className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-500 disabled:opacity-60"
+            >
+              Simpan Status Diterima Sebagian
+            </button>
+          </div>
+        )}
+
+        {showLaporMasalah && (
+          <div className="space-y-2 rounded-lg border border-rose-200 bg-rose-50 p-3">
+            <textarea
+              rows={2}
+              required
+              placeholder="Jelaskan masalahnya (wajib diisi) - mis. barang rusak/tidak sesuai, dana belum masuk, dll"
+              value={catatan}
+              onChange={(e) => setCatatan(e.target.value)}
+              className="w-full rounded-lg border border-rose-300 px-3 py-2 text-sm outline-none focus:border-rose-500"
+            />
+            <button
+              type="button"
+              disabled={busy || !catatan.trim()}
+              onClick={() => runAction('laporkan-masalah', { catatan })}
+              className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-500 disabled:opacity-60"
+            >
+              Kirim Laporan Masalah
+            </button>
           </div>
         )}
 

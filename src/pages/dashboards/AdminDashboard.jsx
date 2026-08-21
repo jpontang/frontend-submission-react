@@ -19,7 +19,18 @@ function formatRupiah(value) {
   }).format(value || 0)
 }
 
-const STATUS_ORDER = ['diajukan', 'revisi_divisi', 'disetujui_divisi', 'revisi_qc', 'disetujui_qc', 'disetujui_bendahara', 'ditolak']
+const STATUS_ORDER = [
+  'diajukan',
+  'revisi_divisi',
+  'disetujui_divisi',
+  'revisi_qc',
+  'disetujui_qc',
+  'disetujui_bendahara',
+  'diterima_sebagian',
+  'selesai',
+  'bermasalah',
+  'ditolak',
+]
 
 const STATUS_LABELS = {
   diajukan: 'Diajukan',
@@ -27,24 +38,50 @@ const STATUS_LABELS = {
   disetujui_divisi: 'Disetujui Divisi',
   revisi_qc: 'Revisi QC',
   disetujui_qc: 'Disetujui QC',
-  disetujui_bendahara: 'Selesai',
+  disetujui_bendahara: 'Menunggu Konfirmasi',
+  diterima_sebagian: 'Diterima Sebagian',
+  selesai: 'Selesai',
+  bermasalah: 'Bermasalah',
   ditolak: 'Ditolak',
 }
 
-// Warna disamakan dgn PengajuanStatusBadge (amber/blue/orange/cyan/emerald/rose).
+// Warna disamakan dgn PengajuanStatusBadge (amber/blue/orange/cyan/violet/emerald/rose).
 const STATUS_COLORS = {
   diajukan: '#f59e0b',
   revisi_divisi: '#f97316',
   disetujui_divisi: '#3b82f6',
   revisi_qc: '#f97316',
   disetujui_qc: '#06b6d4',
-  disetujui_bendahara: '#10b981',
+  disetujui_bendahara: '#8b5cf6',
+  diterima_sebagian: '#f59e0b',
+  selesai: '#10b981',
+  bermasalah: '#f43f5e',
   ditolak: '#f43f5e',
 }
 
-const PENDING_STATUSES = ['diajukan', 'revisi_divisi', 'disetujui_divisi', 'disetujui_qc', 'revisi_qc']
+// "Selesai" (final, sudah dikonfirmasi diterima lengkap - lihat
+// Pengajuan::canValidasiPenerimaan()) TIDAK termasuk pending. Sisanya masih
+// butuh tindak lanjut dari suatu pihak, termasuk disetujui_bendahara/
+// diterima_sebagian (masih menunggu konfirmasi pengaju) & bermasalah (perlu
+// follow-up Bendahara/Admin).
+const PENDING_STATUSES = [
+  'diajukan',
+  'revisi_divisi',
+  'disetujui_divisi',
+  'disetujui_qc',
+  'revisi_qc',
+  'disetujui_bendahara',
+  'diterima_sebagian',
+  'bermasalah',
+]
 
 const BULAN_LABEL = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des']
+
+// Nilai yang saldo kasnya sudah benar2 terpotong (lihat Pengajuan::approveBendahara())
+// - tetap dihitung "selesai" secara finansial dari tahap disetujui_bendahara
+// ke atas, TERLEPAS dari status konfirmasi penerimaan pengaju (yang cuma
+// menambah info susulan, tidak membatalkan transaksi kas yang sudah jalan).
+const STATUS_SUDAH_CAIR = ['disetujui_bendahara', 'diterima_sebagian', 'selesai', 'bermasalah']
 
 /**
  * Dashboard Admin - ringkasan & grafik kegiatan Pengajuan Yayasan (real
@@ -118,7 +155,7 @@ export default function AdminDashboard() {
 
   const stats = useMemo(() => {
     const totalNilaiSelesai = rows
-      .filter((r) => r.status === 'disetujui_bendahara')
+      .filter((r) => STATUS_SUDAH_CAIR.includes(r.status))
       .reduce((sum, r) => sum + (Number(r.total_nilai_pengajuan) || 0), 0)
 
     return {

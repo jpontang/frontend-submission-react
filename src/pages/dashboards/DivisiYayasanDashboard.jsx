@@ -171,13 +171,22 @@ export default function DivisiYayasanDashboard() {
   const counts = useMemo(() => {
     const now = new Date()
     const base = { perluTindakan: 0, dalamProses: 0, selesaiBulanIni: 0, ditolak: 0 }
+    // disetujui_bendahara/diterima_sebagian/bermasalah masih "dalam proses"
+    // - dananya sudah keluar tapi pengaju belum konfirmasi terima lengkap
+    // (lihat Pengajuan::canValidasiPenerimaan()). Baru dihitung
+    // selesaiBulanIni begitu statusnya 'selesai' (dikonfirmasi lengkap).
     rows.forEach((row) => {
       if (STATUS_PERLU_TINDAKAN.includes(row.status)) base.perluTindakan += 1
-      else if (['disetujui_divisi', 'disetujui_qc'].includes(row.status)) base.dalamProses += 1
+      else if (
+        ['disetujui_divisi', 'disetujui_qc', 'disetujui_bendahara', 'diterima_sebagian', 'bermasalah'].includes(
+          row.status
+        )
+      )
+        base.dalamProses += 1
       else if (row.status === 'ditolak') base.ditolak += 1
 
-      if (row.status === 'disetujui_bendahara' && row.tanggal_disetujui_bendahara) {
-        const d = new Date(row.tanggal_disetujui_bendahara)
+      if (row.status === 'selesai' && row.tanggal_konfirmasi) {
+        const d = new Date(row.tanggal_konfirmasi)
         if (d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) {
           base.selesaiBulanIni += 1
         }
