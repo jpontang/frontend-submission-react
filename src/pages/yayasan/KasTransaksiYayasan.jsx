@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { Eye, Landmark } from 'lucide-react'
+import { ArrowDownCircle, ArrowUpCircle, Eye, Landmark, Plus } from 'lucide-react'
 import DataTable from '../../components/DataTable'
 import StatCard from '../../components/StatCard'
 import Modal from '../../components/Modal'
+import PengeluaranKasYayasanModal from '../../components/PengeluaranKasYayasanModal'
 import api from '../../lib/api'
 
 function formatRupiah(value) {
@@ -27,11 +28,13 @@ const STATUS_STYLES = {
  * cron yayasan:tambah-saldo-harian-yayasan). Khusus Admin.
  */
 export default function KasTransaksiYayasan() {
+  const [divisiYayasanId, setDivisiYayasanId] = useState(null)
   const [transaksi, setTransaksi] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [detail, setDetail] = useState(null)
   const [detailLoading, setDetailLoading] = useState(false)
+  const [showPengeluaran, setShowPengeluaran] = useState(false)
 
   async function loadData() {
     setLoading(true)
@@ -46,6 +49,7 @@ export default function KasTransaksiYayasan() {
         return
       }
 
+      setDivisiYayasanId(divisiYayasan.id)
       const { data } = await api.get('/yayasan/kas-transaksi', { params: { divisi_id: divisiYayasan.id } })
       setTransaksi(data)
     } catch (err) {
@@ -74,6 +78,20 @@ export default function KasTransaksiYayasan() {
   const columns = [
     { key: 'kode_transaksi', header: 'Kode' },
     { key: 'uraian', header: 'Uraian' },
+    {
+      key: 'arah',
+      header: 'Arah',
+      render: (row) => (
+        <span
+          className={`inline-flex items-center gap-1 text-xs font-medium ${
+            row.arah === 'masuk' ? 'text-emerald-600' : 'text-rose-600'
+          }`}
+        >
+          {row.arah === 'masuk' ? <ArrowUpCircle size={14} /> : <ArrowDownCircle size={14} />}
+          {row.arah === 'masuk' ? 'Masuk' : 'Keluar'}
+        </span>
+      ),
+    },
     { key: 'nominal', header: 'Nominal', render: (row) => formatRupiah(row.nominal) },
     {
       key: 'saldo_sesudah',
@@ -116,12 +134,23 @@ export default function KasTransaksiYayasan() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold text-slate-900">Kas Transaksi Yayasan</h1>
-        <p className="text-sm text-slate-500">
-          Agregat total pembayaran SPP seluruh unit sekolah per hari - terpisah dari kas masing-masing
-          unit. Khusus Admin.
-        </p>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-semibold text-slate-900">Kas Transaksi Yayasan</h1>
+          <p className="text-sm text-slate-500">
+            Agregat total pembayaran SPP seluruh unit sekolah per hari - terpisah dari kas masing-masing
+            unit. Khusus Admin.
+          </p>
+        </div>
+
+        <button
+          onClick={() => setShowPengeluaran(true)}
+          disabled={!divisiYayasanId}
+          className="inline-flex items-center gap-2 rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-500 disabled:opacity-60"
+        >
+          <Plus size={16} />
+          Tambah Pengeluaran
+        </button>
       </div>
 
       {error && <p className="rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-600">{error}</p>}
@@ -181,6 +210,14 @@ export default function KasTransaksiYayasan() {
           </div>
         )}
       </Modal>
+
+      <PengeluaranKasYayasanModal
+        open={showPengeluaran}
+        onClose={() => setShowPengeluaran(false)}
+        divisiId={divisiYayasanId}
+        saldoSaatIni={saldoSaatIni}
+        onSaved={loadData}
+      />
     </div>
   )
 }

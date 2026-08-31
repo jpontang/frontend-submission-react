@@ -20,6 +20,7 @@ const JENIS_LABELS = {
   pemasukan: 'Pemasukan',
   pengajuan_dana: 'Pengajuan Dana',
   pengadaan_barang: 'Pengadaan Barang',
+  pengeluaran: 'Pengeluaran',
   distribusi_unit: 'Distribusi ke Unit',
 }
 
