@@ -200,7 +200,7 @@ export default function App() {
         <Route
           path="yayasan/rekap-kas-bulanan"
           element={
-            <RoleRoute allow={[ROLES.ADMIN]}>
+            <RoleRoute allow={[ROLES.ADMIN, ROLES.BENDAHARA, ROLES.QC]}>
               <RekapKasBulanan />
             </RoleRoute>
           }

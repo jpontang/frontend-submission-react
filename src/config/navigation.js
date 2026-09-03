@@ -15,6 +15,7 @@ import {
   CircleCheck,
   HandCoins,
   MessageCircle,
+  CalendarRange,
 } from 'lucide-react'
 
 export const ROLES = {
@@ -124,16 +125,22 @@ export const NAV_ITEMS = [
     label: 'Log',
     icon: History,
     roles: [ROLES.ADMIN],
-    children: [
-      { to: '/yayasan/cron-log', label: 'Log Cron' },
-      { to: '/yayasan/rekap-kas-bulanan', label: 'Rekap Kas Bulanan' },
-    ],
+    children: [{ to: '/yayasan/cron-log', label: 'Log Cron' }],
   },
   {
     to: '/whatsapp-log',
     label: 'Log WhatsApp',
     icon: MessageCircle,
     roles: [ROLES.ADMIN, ROLES.BENDAHARA],
+  },
+  {
+    to: '/yayasan/rekap-kas-bulanan',
+    label: 'Rekap Kas Bulanan',
+    icon: CalendarRange,
+    // Beda dari grup 'Log' yg admin-only - menu ini dipisah sendiri krn
+    // Bendahara & QC juga berwenang lihat (lihat
+    // KasTransaksiController::ensureBendaharaAdminOrQc()).
+    roles: [ROLES.ADMIN, ROLES.BENDAHARA, ROLES.QC],
   },
   {
     label: 'Settings',

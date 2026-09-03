@@ -115,7 +115,7 @@ export default function RekapKasBulanan() {
       <div>
         <h1 className="text-xl font-semibold text-slate-900">Rekap Kas Bulanan</h1>
         <p className="text-sm text-slate-500">
-          Rekap saldo kas masuk &amp; keluar untuk satu bulan, per divisi dan divisi parent. Khusus Admin.
+          Rekap saldo kas masuk &amp; keluar untuk satu bulan, per divisi dan divisi parent. Khusus Admin/Bendahara/QC.
         </p>
       </div>
 
