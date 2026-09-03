@@ -25,6 +25,7 @@ import Peminjaman from './pages/yayasan/Peminjaman'
 import PotonganPendapatan from './pages/yayasan/PotonganPendapatan'
 import CronLog from './pages/yayasan/CronLog'
 import KasTransaksiYayasan from './pages/yayasan/KasTransaksiYayasan'
+import RekapKasBulanan from './pages/yayasan/RekapKasBulanan'
 import WhatsappSetting from './pages/WhatsappSetting'
 import WhatsappLog from './pages/WhatsappLog'
 
@@ -193,6 +194,14 @@ export default function App() {
           element={
             <RoleRoute allow={[ROLES.ADMIN]}>
               <KasTransaksiYayasan />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="yayasan/rekap-kas-bulanan"
+          element={
+            <RoleRoute allow={[ROLES.ADMIN]}>
+              <RekapKasBulanan />
             </RoleRoute>
           }
         />

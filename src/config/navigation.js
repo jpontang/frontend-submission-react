@@ -124,7 +124,10 @@ export const NAV_ITEMS = [
     label: 'Log',
     icon: History,
     roles: [ROLES.ADMIN],
-    children: [{ to: '/yayasan/cron-log', label: 'Log Cron' }],
+    children: [
+      { to: '/yayasan/cron-log', label: 'Log Cron' },
+      { to: '/yayasan/rekap-kas-bulanan', label: 'Rekap Kas Bulanan' },
+    ],
   },
   {
     to: '/whatsapp-log',

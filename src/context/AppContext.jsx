@@ -30,6 +30,7 @@ const RESOURCES = [
     method: 'get',
   },
   { key: 'deptList', endpoint: '/getDept', fetchName: 'fetchDeptList', method: 'get' },
+  { key: 'unitSekolahList', endpoint: '/getUnitSekolah', fetchName: 'fetchUnitSekolahList', method: 'get' },
   { key: 'setBudgetUnit', endpoint: '/setBudget', fetchName: 'fetchSetBudgetUnit', method: 'get' },
   { key: 'setBudgetDept', endpoint: '/getSetBudgetDept', fetchName: 'fetchSetBudgetDept', method: 'get' },
 ]
@@ -47,11 +48,16 @@ export function AppProvider({ children }) {
   const [loading, setLoading] = useState(() => initialStateOf(false))
   const [error, setError] = useState(() => initialStateOf(null))
 
-  const fetchResource = useCallback((key, endpoint, method = 'post') => {
+  // params opsional - dipakai resource yang butuh filter query string (mis.
+  // setBudgetUnit/setBudgetDept dgn ?bulan=YYYY-MM, lihat BudgetControl.jsx).
+  // Dibiarkan undefined utk resource lain, axios mengabaikannya (tanpa query string).
+  const fetchResource = useCallback((key, endpoint, method = 'post', params) => {
     setLoading((prev) => ({ ...prev, [key]: true }))
     setError((prev) => ({ ...prev, [key]: null }))
 
-    return api[method](endpoint)
+    const request = method === 'get' ? api.get(endpoint, { params }) : api.post(endpoint, params)
+
+    return request
       .then(({ data: result }) => {
         setData((prev) => ({ ...prev, [key]: result }))
         return result
@@ -73,7 +79,7 @@ export function AppProvider({ children }) {
       Object.fromEntries(
         RESOURCES.map(({ key, endpoint, fetchName, method }) => [
           fetchName,
-          () => fetchResource(key, endpoint, method),
+          (params) => fetchResource(key, endpoint, method, params),
         ])
       ),
     [fetchResource]

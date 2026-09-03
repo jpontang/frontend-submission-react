@@ -13,6 +13,11 @@ function formatRupiah(value) {
   }).format(Number(value) || 0)
 }
 
+function bulanIni() {
+  const now = new Date()
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+}
+
 /**
  * Set Budget (Unit Sekolah & Departemen) - port dari halaman Vue lama
  * (resources/js/components/bendahara/SetBudget.vue) ke React, tetap
@@ -37,6 +42,7 @@ export default function BudgetControl() {
     setBudgetDept,
     totalTagihanSPP,
     deptList,
+    unitSekolahList,
     potonganUnit,
     potonganUnitBaru,
     siswaUnit,
@@ -46,6 +52,7 @@ export default function BudgetControl() {
     fetchSetBudgetDept,
     fetchTotalTagihanSPP,
     fetchDeptList,
+    fetchUnitSekolahList,
     fetchPotonganUnit,
     fetchPotonganUnitBaru,
     fetchAllSiswaUnit,
@@ -56,21 +63,30 @@ export default function BudgetControl() {
   const [modalMode, setModalMode] = useState('unit')
   const [editing, setEditing] = useState(null)
   const [actionError, setActionError] = useState(null)
+  // Default bulan berjalan - tabel set budget (unit & dept) difilter oleh
+  // ini. Pilih 'semua' utk lihat seluruh riwayat data yang pernah diinput
+  // tanpa filter bulan.
+  const [bulan, setBulan] = useState(bulanIni())
+  // Filter unit/departemen, terpisah per tab spy pilihan tab Unit Sekolah
+  // tidak ikut hilang saat pindah ke tab Departemen & sebaliknya. '' = semua unit.
+  const [kodeUnitFilter, setKodeUnitFilter] = useState('')
+  const [kodeDeptFilter, setKodeDeptFilter] = useState('')
 
-  function loadAll() {
-    fetchSetBudgetUnit()
-    fetchSetBudgetDept()
+  function loadAll(bulanDipilih = bulan) {
+    fetchSetBudgetUnit({ bulan: bulanDipilih, kode_unit: kodeUnitFilter || undefined })
+    fetchSetBudgetDept({ bulan: bulanDipilih, kode_unit: kodeDeptFilter || undefined })
     fetchTotalTagihanSPP()
     fetchDeptList()
+    fetchUnitSekolahList()
     fetchPotonganUnit()
     fetchPotonganUnitBaru()
     fetchAllSiswaUnit()
   }
 
   useEffect(() => {
-    loadAll()
+    loadAll(bulan)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [bulan, kodeUnitFilter, kodeDeptFilter])
 
   function showModalUnit() {
     setModalMode('unit')
@@ -255,6 +271,60 @@ export default function BudgetControl() {
         >
           Departemen
         </button>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-sm text-slate-500">Bulan Berlaku:</span>
+        <input
+          type="month"
+          value={bulan === 'semua' ? '' : bulan}
+          onChange={(e) => setBulan(e.target.value || bulanIni())}
+          className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none"
+        />
+        <button
+          onClick={() => setBulan('semua')}
+          className={`rounded-lg border px-3 py-2 text-sm font-medium ${
+            bulan === 'semua'
+              ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
+              : 'border-slate-300 text-slate-600 hover:bg-slate-50'
+          }`}
+        >
+          Semua Data
+        </button>
+
+        {tab === 'unit' ? (
+          <>
+            <span className="ml-2 text-sm text-slate-500">Unit:</span>
+            <select
+              value={kodeUnitFilter}
+              onChange={(e) => setKodeUnitFilter(e.target.value)}
+              className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none"
+            >
+              <option value="">Semua Unit</option>
+              {(unitSekolahList || []).map((u) => (
+                <option key={u.kode_unit} value={u.kode_unit}>
+                  {u.nama_unit}
+                </option>
+              ))}
+            </select>
+          </>
+        ) : (
+          <>
+            <span className="ml-2 text-sm text-slate-500">Departemen:</span>
+            <select
+              value={kodeDeptFilter}
+              onChange={(e) => setKodeDeptFilter(e.target.value)}
+              className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none"
+            >
+              <option value="">Semua Departemen</option>
+              {(deptList || []).map((d) => (
+                <option key={d.kode_unit} value={d.kode_unit}>
+                  {d.nama_divisi}
+                </option>
+              ))}
+            </select>
+          </>
+        )}
       </div>
 
       {(error.setBudgetUnit || error.setBudgetDept || actionError) && (

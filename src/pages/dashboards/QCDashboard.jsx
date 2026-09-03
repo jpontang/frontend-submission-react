@@ -1,11 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ClipboardCheck, ClipboardX, ClipboardList } from 'lucide-react'
+import { ClipboardCheck, ClipboardX, ClipboardList, Wallet } from 'lucide-react'
 import StatCard from '../../components/StatCard'
 import DataTable from '../../components/DataTable'
 import PengajuanStatusBadge from '../../components/PengajuanStatusBadge'
 import PengajuanDetailModal from '../../components/PengajuanDetailModal'
 import { useAuth } from '../../context/AuthContext'
 import api from '../../lib/api'
+
+// Divisi khusus agregat pemasukan SPP seluruh unit (lihat
+// KasTransaksiYayasan.jsx/migration seed_divisi_yayasan) - BUKAN divisi
+// operasional biasa, jadi sengaja dikeluarkan dari tabel saldo per divisi
+// di sini (diminta eksplisit: "kecuali kas yayasan").
+const KODE_DIVISI_YAYASAN = 'YAYASAN'
 
 function formatRupiah(value) {
   return new Intl.NumberFormat('id-ID', {
@@ -40,6 +46,10 @@ export default function QCDashboard() {
   const [error, setError] = useState(null)
   const [selected, setSelected] = useState(null)
   const [detailError, setDetailError] = useState(null)
+  const [divisiList, setDivisiList] = useState([])
+  const [saldoMap, setSaldoMap] = useState(new Map())
+  const [saldoLoading, setSaldoLoading] = useState(true)
+  const [saldoError, setSaldoError] = useState(null)
 
   const loadData = useCallback(() => {
     setLoading(true)
@@ -51,9 +61,39 @@ export default function QCDashboard() {
       .finally(() => setLoading(false))
   }, [])
 
+  // Saldo kas SEMUA divisi - QC lintas-divisi (tidak dibatasi
+  // DivisiScopeMiddleware, lihat CROSS_DIVISI_ROLE_IDS), jadi
+  // /yayasan/divisi otomatis balikin seluruh divisi tanpa perlu filter
+  // tambahan. Dibangun dari /yayasan/divisi-saldo (saldo terkini, bukan
+  // dari riwayat transaksi) supaya divisi yang belum pernah ada transaksi
+  // sama sekali tetap muncul dgn saldo 0 - lihat pola yang sama di
+  // DivisiYayasanDashboard.jsx.
+  const loadSaldo = useCallback(() => {
+    setSaldoLoading(true)
+    setSaldoError(null)
+    Promise.all([api.get('/yayasan/divisi'), api.get('/yayasan/divisi-saldo')])
+      .then(([divisiRes, saldoRes]) => {
+        setDivisiList(divisiRes.data)
+        setSaldoMap(new Map(saldoRes.data.map((d) => [d.id, d.saldo])))
+      })
+      .catch((err) => setSaldoError(err.response?.data?.msg || 'Gagal memuat saldo kas divisi.'))
+      .finally(() => setSaldoLoading(false))
+  }, [])
+
   useEffect(() => {
     loadData()
-  }, [loadData])
+    loadSaldo()
+  }, [loadData, loadSaldo])
+
+  // Kas Yayasan (agregat SPP) sengaja dikecualikan - lihat KODE_DIVISI_YAYASAN.
+  const saldoRows = useMemo(
+    () =>
+      divisiList
+        .filter((d) => d.kode_divisi !== KODE_DIVISI_YAYASAN)
+        .map((d) => ({ ...d, saldo: saldoMap.get(d.id) ?? 0 })),
+    [divisiList, saldoMap]
+  )
+  const totalSaldo = useMemo(() => saldoRows.reduce((sum, d) => sum + d.saldo, 0), [saldoRows])
 
   function openDetail(row) {
     setDetailError(null)
@@ -79,6 +119,28 @@ export default function QCDashboard() {
     })
     return { disetujuiBulanIni, ditolakBulanIni }
   }, [rows])
+
+  const kolomSaldo = [
+    {
+      key: 'nama_divisi',
+      header: 'Divisi',
+      render: (row) => (
+        <span className={row.parent_divisi_id ? 'pl-4 text-slate-700' : 'font-semibold text-slate-900'}>
+          {row.parent_divisi_id ? `— ${row.nama_divisi}` : row.nama_divisi}
+        </span>
+      ),
+    },
+    { key: 'parent', header: 'Induk Divisi', render: (row) => row.parent?.nama_divisi || '-' },
+    {
+      key: 'saldo',
+      header: 'Saldo Berjalan',
+      render: (row) => (
+        <span className={`font-medium ${row.saldo < 0 ? 'text-rose-600' : 'text-slate-800'}`}>
+          {formatRupiah(row.saldo)}
+        </span>
+      ),
+    },
+  ]
 
   const columns = [
     { key: 'kode_pengajuan', header: 'Kode' },
@@ -139,6 +201,19 @@ export default function QCDashboard() {
 
       {error && <p className="rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-600">{error}</p>}
       {detailError && <p className="rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-600">{detailError}</p>}
+      {saldoError && <p className="rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-600">{saldoError}</p>}
+
+      <div>
+        <h3 className="mb-3 text-sm font-semibold text-slate-700">Saldo Kas Berjalan Semua Divisi</h3>
+        <div className="mb-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <StatCard label="Total Saldo (Semua Divisi)" value={formatRupiah(totalSaldo)} icon={Wallet} />
+        </div>
+        <DataTable
+          columns={kolomSaldo}
+          rows={saldoRows}
+          emptyText={saldoLoading ? 'Memuat data...' : 'Belum ada divisi.'}
+        />
+      </div>
 
       <div>
         <h3 className="mb-3 text-sm font-semibold text-slate-700">Antrean Review</h3>
