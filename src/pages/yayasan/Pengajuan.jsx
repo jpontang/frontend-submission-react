@@ -18,6 +18,15 @@ function formatRupiah(value) {
   }).format(value || 0)
 }
 
+function formatTanggal(value) {
+  if (!value) return '-'
+  return new Date(value).toLocaleDateString('id-ID', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  })
+}
+
 // Sama seperti gate `canValidasiPenerimaan` di PengajuanDetailModal - kalau
 // tidak disamakan, pengajuan yang sudah butuh konfirmasi penerimaan (PO
 // terkirim/dana dicairkan) tidak pernah kehitung sbg "perlu tindakan" utk
@@ -56,6 +65,9 @@ export default function PengajuanYayasan() {
   const [selected, setSelected] = useState(null)
   const [detailError, setDetailError] = useState(null)
   const [statusFilter, setStatusFilter] = useState('')
+  const [bulanFilter, setBulanFilter] = useState('')
+  const [divisiFilter, setDivisiFilter] = useState('')
+  const [divisiList, setDivisiList] = useState([])
 
   const [pencairanList, setPencairanList] = useState([])
   const [pencairanLoading, setPencairanLoading] = useState(false)
@@ -91,16 +103,28 @@ export default function PengajuanYayasan() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])
 
+  // Daftar divisi/unit utk dropdown filter - backend sudah otomatis
+  // mempersempit ke scope role (admin/bendahara/QC lihat semua divisi).
+  useEffect(() => {
+    api
+      .get('/yayasan/divisi')
+      .then(({ data }) => setDivisiList(data))
+      .catch(() => setDivisiList([]))
+  }, [])
+
   const loadData = useCallback(() => {
     setLoading(true)
     setError(null)
-    const params = statusFilter ? { status: statusFilter } : {}
+    const params = {}
+    if (statusFilter) params.status = statusFilter
+    if (bulanFilter) params.bulan = bulanFilter
+    if (divisiFilter) params.divisi_id = divisiFilter
     api
       .get('/yayasan/pengajuan', { params })
       .then(({ data }) => setRows(data))
       .catch((err) => setError(err.response?.data?.msg || 'Gagal memuat data pengajuan.'))
       .finally(() => setLoading(false))
-  }, [statusFilter])
+  }, [statusFilter, bulanFilter, divisiFilter])
 
   const loadPencairan = useCallback(() => {
     if (!canBendahara) return
@@ -184,6 +208,7 @@ export default function PengajuanYayasan() {
 
   const columns = [
     { key: 'kode_pengajuan', header: 'Kode' },
+    { key: 'created_at', header: 'Tanggal', render: (row) => formatTanggal(row.created_at) },
     { key: 'divisi', header: 'Divisi', render: (row) => row.divisi?.nama_divisi || '-' },
     {
       key: 'jenis_pengajuan',
@@ -256,7 +281,7 @@ export default function PengajuanYayasan() {
         <StatCard label="Ditolak" value={counts.ditolak} accent="rose" />
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
@@ -273,6 +298,34 @@ export default function PengajuanYayasan() {
           <option value="selesai">Selesai</option>
           <option value="bermasalah">Bermasalah</option>
           <option value="ditolak">Ditolak</option>
+        </select>
+
+        <input
+          type="month"
+          value={bulanFilter}
+          onChange={(e) => setBulanFilter(e.target.value)}
+          className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+        />
+        {bulanFilter && (
+          <button
+            onClick={() => setBulanFilter('')}
+            className="rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+          >
+            Reset Bulan
+          </button>
+        )}
+
+        <select
+          value={divisiFilter}
+          onChange={(e) => setDivisiFilter(e.target.value)}
+          className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+        >
+          <option value="">Semua Unit/Divisi</option>
+          {divisiList.map((d) => (
+            <option key={d.id} value={d.id}>
+              {d.nama_divisi}
+            </option>
+          ))}
         </select>
       </div>
 

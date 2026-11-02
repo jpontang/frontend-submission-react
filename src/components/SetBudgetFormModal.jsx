@@ -272,24 +272,6 @@ export default function SetBudgetFormModal({
           </div>
         </div>
 
-        {mode === 'unit' && parentInfo.nama_parent_divisi && (
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">
-              Total Potong Pendapatan - {parentInfo.nama_parent_divisi}
-            </label>
-            <input
-              type="text"
-              readOnly
-              value={formatRupiah(parentInfo.potong_pendapatan_parent)}
-              className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm outline-none"
-            />
-            <p className="mt-1 text-xs text-slate-400">
-              Gabungan potongan pendapatan semua unit di bawah induk divisi yang sama (dari menu
-              Potongan Pendapatan), sekadar info - bukan bagian dari kalkulasi budget unit ini.
-            </p>
-          </div>
-        )}
-
         <div>
           <label className="mb-1 block text-sm font-medium text-slate-700">Quota Budget (%)</label>
           <input
